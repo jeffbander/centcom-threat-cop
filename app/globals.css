@@ -232,6 +232,34 @@ body {
   }
 }
 
+/* Secure government access portal */
+.gsm-secure-gate {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(30, 61, 95, 0.45), transparent 55%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.15) 2px,
+      rgba(0, 0, 0, 0.15) 4px
+    ),
+    #050a12;
+}
+
+.gsm-class-banner {
+  text-shadow: 0 0 1px #000;
+}
+
+.gsm-secure-seal {
+  filter: drop-shadow(0 0 20px rgba(201, 162, 39, 0.35));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gsm-secure-gate .animate-pulse {
+    animation: none;
+  }
+}
+
 /* Leaflet map shell — fills dashboard center pane */
 .gsm-map-shell {
   position: relative;
