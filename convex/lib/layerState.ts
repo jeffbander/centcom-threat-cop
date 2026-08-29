@@ -55,3 +55,28 @@ export function resolveLayerSourceState(input: {
   if (input.now - input.fetchedAt > staleAfter) return "STALE";
   return "LIVE";
 }
+
+/**
+ * Present a stored snapshot's chip. Age can demote LIVE → STALE.
+ * Stored STALE / KEY_REQUIRED / UNAVAILABLE never promote to LIVE just
+ * because `fetchedAt` is recent (seeded catalogs write fetchedAt=now).
+ */
+export function presentLayerSnapshotStatus(input: {
+  layer: LayerId;
+  storedStatus: LayerSourceState;
+  now: number;
+  fetchedAt: number | null;
+  keyPresent?: boolean;
+  staleAfterMs?: number;
+}): LayerSourceState {
+  if (input.storedStatus === "KEY_REQUIRED") return "KEY_REQUIRED";
+  if (input.storedStatus === "UNAVAILABLE") return "UNAVAILABLE";
+  if (input.storedStatus === "STALE") return "STALE";
+  return resolveLayerSourceState({
+    layer: input.layer,
+    now: input.now,
+    fetchedAt: input.fetchedAt,
+    keyPresent: input.keyPresent,
+    staleAfterMs: input.staleAfterMs,
+  });
+}

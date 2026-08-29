@@ -10,6 +10,8 @@ import { requireUser } from "./lib/auth";
 import {
   STALE_AFTER_MS,
   isLayerId,
+  isLayerSourceState,
+  presentLayerSnapshotStatus,
   resolveLayerSourceState,
 } from "./lib/layerState";
 
@@ -58,18 +60,18 @@ export const getSnapshot = query({
       };
     }
 
-    const status = resolveLayerSourceState({
+    const storedStatus = isLayerSourceState(row.status)
+      ? row.status
+      : "UNAVAILABLE";
+    const status = presentLayerSnapshotStatus({
       layer: args.layer,
+      storedStatus,
       now: args.now,
       fetchedAt: row.fetchedAt,
       keyPresent:
         args.layer === "firms"
-          ? row.status !== "KEY_REQUIRED"
-            ? true
-            : Boolean((process.env.FIRMS_MAP_KEY ?? "").trim())
+          ? Boolean((process.env.FIRMS_MAP_KEY ?? "").trim())
           : true,
-      keyInvalid: row.status === "KEY_REQUIRED",
-      fetchFailed: row.status === "UNAVAILABLE",
       staleAfterMs: STALE_AFTER_MS[args.layer],
     });
 
