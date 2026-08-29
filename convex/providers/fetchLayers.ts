@@ -13,7 +13,7 @@ import {
 } from "../lib/firms";
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
-const FETCH_TIMEOUT_MS = 45_000;
+const FETCH_TIMEOUT_MS = 8_000;
 const MAX_BODY_BYTES = 5_000_000;
 const USER_AGENT =
   "GlobalSituationMonitor/1.0 (MSWlab.ai prototype; FIRMS/CelesTrak overlay)";
