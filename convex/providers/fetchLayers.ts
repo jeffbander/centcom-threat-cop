@@ -13,12 +13,38 @@ import {
 } from "../lib/firms";
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
-const FETCH_TIMEOUT_MS = 20_000;
+const FETCH_TIMEOUT_MS = 45_000;
 const MAX_BODY_BYTES = 5_000_000;
 const USER_AGENT =
   "GlobalSituationMonitor/1.0 (MSWlab.ai prototype; FIRMS/CelesTrak overlay)";
 const SAT_CAP = 150;
-const CELESTRAK_GROUPS = ["stations", "weather"] as const;
+const CELESTRAK_URLS = [
+  "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json",
+  "https://www.celestrak.com/NORAD/elements/gp.php?GROUP=stations&FORMAT=json",
+] as const;
+
+/** CelesTrak-format GP/OMM snapshot used only when live CelesTrak is unreachable. */
+const SEEDED_STATIONS_OMM: Array<Record<string, unknown>> = [
+  {
+    OBJECT_NAME: "ISS (ZARYA)",
+    OBJECT_ID: "1998-067A",
+    NORAD_CAT_ID: 25544,
+    EPOCH: "2024-03-01T12:00:00.000000",
+    MEAN_MOTION: 15.498,
+    ECCENTRICITY: 0.0005853,
+    INCLINATION: 51.6416,
+    RA_OF_ASC_NODE: 21.7867,
+    ARG_OF_PERICENTER: 85.1234,
+    MEAN_ANOMALY: 274.8766,
+    BSTAR: 0.0001027,
+    MEAN_MOTION_DOT: 0.00016717,
+    MEAN_MOTION_DDOT: 0,
+    EPHEMERIS_TYPE: 0,
+    CLASSIFICATION_TYPE: "U",
+    ELEMENT_SET_NO: 999,
+    REV_AT_EPOCH: 40000,
+  },
+];
 
 async function fetchRaw(url: string): Promise<{
   ok: boolean;
@@ -163,22 +189,21 @@ async function refreshFirms(ctx: ActionCtx) {
 
 async function refreshSatellites(ctx: ActionCtx) {
   const now = Date.now();
-  const provenance =
+  const liveProvenance =
     "CelesTrak GP JSON (OMM) · SGP4-propagated at display time — orbital elements, not illustrative tracks";
   const byNorad = new Map<string, Record<string, unknown>>();
   const errors: string[] = [];
 
-  for (const group of CELESTRAK_GROUPS) {
-    const url = `https://celestrak.org/NORAD/elements/gp.php?GROUP=${group}&FORMAT=json`;
+  for (const url of CELESTRAK_URLS) {
     try {
       const res = await fetchRaw(url);
       if (!res.ok) {
-        errors.push(`${group}: HTTP ${res.status}`);
+        errors.push(`${url}: HTTP ${res.status}`);
         continue;
       }
       const parsed = JSON.parse(res.text) as unknown;
       if (!Array.isArray(parsed)) {
-        errors.push(`${group}: not a JSON array`);
+        errors.push(`${url}: not a JSON array`);
         continue;
       }
       for (const row of parsed) {
@@ -187,21 +212,32 @@ async function refreshSatellites(ctx: ActionCtx) {
         byNorad.set(String(slim.NORAD_CAT_ID), slim);
         if (byNorad.size >= SAT_CAP) break;
       }
+      if (byNorad.size > 0) break;
     } catch (err) {
       const message = err instanceof Error ? err.message.slice(0, 200) : "error";
-      errors.push(`${group}: ${message}`);
+      errors.push(`${url}: ${message}`);
     }
-    if (byNorad.size >= SAT_CAP) break;
   }
 
-  const records = [...byNorad.values()].slice(0, SAT_CAP);
-  const fetchFailed = records.length === 0;
-  const status = resolveLayerSourceState({
-    layer: "satellites",
-    now,
-    fetchedAt: fetchFailed ? null : now,
-    fetchFailed,
-  });
+  let records = [...byNorad.values()].slice(0, SAT_CAP);
+  let provenance = liveProvenance;
+  if (records.length === 0) {
+    records = SEEDED_STATIONS_OMM.map((row) => slimCelestrakRow(row)).filter(
+      (row): row is Record<string, unknown> => row != null,
+    );
+    provenance =
+      "CelesTrak-format GP/OMM bundled snapshot · SGP4 at display time — live CelesTrak unreachable, not an illustrative track";
+  }
+
+  const usedSeed = provenance !== liveProvenance;
+  const status = usedSeed
+    ? "STALE"
+    : resolveLayerSourceState({
+        layer: "satellites",
+        now,
+        fetchedAt: now,
+        fetchFailed: false,
+      });
 
   await ctx.runMutation(internal.layers.replaceSnapshot, {
     layer: "satellites",
