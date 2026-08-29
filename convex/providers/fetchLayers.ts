@@ -14,10 +14,21 @@ import {
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
 const FETCH_TIMEOUT_MS = 8_000;
+const FIRMS_PUBLIC_TIMEOUT_MS = 30_000;
 const MAX_BODY_BYTES = 5_000_000;
+const FIRMS_PUBLIC_MAX_BYTES = 20_000_000;
 const USER_AGENT =
   "GlobalSituationMonitor/1.0 (MSWlab.ai prototype; FIRMS/CelesTrak overlay)";
 const SAT_CAP = 150;
+const FIRMS_PUBLIC_CSV_URL =
+  "https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv";
+const LIVE_TLE_NORADS = [
+  25544, // ISS
+  20580, // Hubble
+  48274, // CSS / Tiangong
+  43013, // NOAA-20
+  37849, // Suomi NPP
+];
 const CELESTRAK_URLS = [
   "https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=json",
   "https://www.celestrak.com/NORAD/elements/gp.php?GROUP=stations&FORMAT=json",
@@ -46,23 +57,29 @@ const SEEDED_STATIONS_OMM: Array<Record<string, unknown>> = [
   },
 ];
 
-async function fetchRaw(url: string): Promise<{
+async function fetchRaw(
+  url: string,
+  opts?: { timeoutMs?: number; maxBytes?: number; accept?: string },
+): Promise<{
   ok: boolean;
   status: number;
   text: string;
 }> {
+  const timeoutMs = opts?.timeoutMs ?? FETCH_TIMEOUT_MS;
+  const maxBytes = opts?.maxBytes ?? MAX_BODY_BYTES;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
         "User-Agent": USER_AGENT,
-        Accept: "text/csv, application/json, text/plain, */*",
+        Accept: opts?.accept ?? "text/csv, application/json, text/plain, */*",
       },
+      redirect: "follow",
     });
     const buf = await res.arrayBuffer();
-    if (buf.byteLength > MAX_BODY_BYTES) {
+    if (buf.byteLength > maxBytes) {
       return {
         ok: false,
         status: res.status,
@@ -120,21 +137,67 @@ function slimCelestrakRow(raw: unknown): Record<string, unknown> | null {
   };
 }
 
+async function writeFirms(
+  ctx: ActionCtx,
+  args: {
+    now: number;
+    status: "LIVE" | "STALE" | "KEY_REQUIRED" | "UNAVAILABLE";
+    detections: unknown[];
+    errorSummary?: string;
+    provenance: string;
+  },
+) {
+  await ctx.runMutation(internal.layers.replaceSnapshot, {
+    layer: "firms",
+    fetchedAt: args.now,
+    status: args.status,
+    recordsJson: JSON.stringify(args.detections),
+    recordsReceived: args.detections.length,
+    errorSummary: args.errorSummary,
+    provenance: args.provenance,
+  });
+}
+
 async function refreshFirms(ctx: ActionCtx) {
   const now = Date.now();
+  const publicProvenance =
+    "NASA FIRMS Suomi-NPP VIIRS C2 Global 24h CSV (keyless) — public hotspot detections, not events";
+
+  try {
+    const res = await fetchRaw(FIRMS_PUBLIC_CSV_URL, {
+      timeoutMs: FIRMS_PUBLIC_TIMEOUT_MS,
+      maxBytes: FIRMS_PUBLIC_MAX_BYTES,
+    });
+    if (res.ok) {
+      const detections = parseFirmsCsv(res.text);
+      if (detections.length > 0) {
+        await writeFirms(ctx, {
+          now,
+          status: "LIVE",
+          detections,
+          provenance: publicProvenance,
+        });
+        return;
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message.slice(0, 200) : "fetch failed";
+    // Fall through to MAP_KEY API / KEY_REQUIRED.
+    void message;
+  }
+
   const mapKey = (process.env.FIRMS_MAP_KEY ?? "").trim();
-  const provenance =
+  const keyedProvenance =
     "NASA FIRMS VIIRS_SNPP_NRT world/1 — public hotspot detections, not events";
 
   if (!mapKey) {
-    await ctx.runMutation(internal.layers.replaceSnapshot, {
-      layer: "firms",
-      fetchedAt: now,
+    await writeFirms(ctx, {
+      now,
       status: "KEY_REQUIRED",
-      recordsJson: "[]",
-      recordsReceived: 0,
-      errorSummary: "FIRMS_MAP_KEY not configured on Convex",
-      provenance,
+      detections: [],
+      errorSummary:
+        "Public FIRMS 24h CSV unavailable and FIRMS_MAP_KEY not configured",
+      provenance: keyedProvenance,
     });
     return;
   }
@@ -151,48 +214,97 @@ async function refreshFirms(ctx: ActionCtx) {
         bodyPreview: res.text.slice(0, 400),
         fetchFailed: !res.ok,
       });
-      await ctx.runMutation(internal.layers.replaceSnapshot, {
-        layer: "firms",
-        fetchedAt: now,
+      await writeFirms(ctx, {
+        now,
         status,
-        recordsJson: "[]",
-        recordsReceived: 0,
+        detections: [],
         errorSummary: invalid
           ? "Invalid FIRMS_MAP_KEY"
           : `FIRMS HTTP ${res.status}`,
-        provenance,
+        provenance: keyedProvenance,
       });
       return;
     }
     const detections = parseFirmsCsv(res.text);
-    await ctx.runMutation(internal.layers.replaceSnapshot, {
-      layer: "firms",
-      fetchedAt: now,
+    await writeFirms(ctx, {
+      now,
       status: "LIVE",
-      recordsJson: JSON.stringify(detections),
-      recordsReceived: detections.length,
-      provenance,
+      detections,
+      provenance: keyedProvenance,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
-    await ctx.runMutation(internal.layers.replaceSnapshot, {
-      layer: "firms",
-      fetchedAt: now,
+    await writeFirms(ctx, {
+      now,
       status: "UNAVAILABLE",
-      recordsJson: "[]",
-      recordsReceived: 0,
+      detections: [],
       errorSummary: message,
-      provenance,
+      provenance: keyedProvenance,
     });
   }
 }
 
+function tleRecordFromApi(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const line1 = typeof o.line1 === "string" ? o.line1 : "";
+  const line2 = typeof o.line2 === "string" ? o.line2 : "";
+  const name = typeof o.name === "string" ? o.name : "";
+  const norad = o.satelliteId ?? o.NORAD_CAT_ID;
+  if (!line1.startsWith("1 ") || !line2.startsWith("2 ") || !name || norad == null) {
+    return null;
+  }
+  return {
+    OBJECT_NAME: name.trim(),
+    NORAD_CAT_ID: norad,
+    EPOCH: typeof o.date === "string" ? o.date : undefined,
+    TLE_LINE1: line1.trim(),
+    TLE_LINE2: line2.trim(),
+  };
+}
+
 async function refreshSatellites(ctx: ActionCtx) {
   const now = Date.now();
+  const tleProvenance =
+    "Live TLE (tle.ivanstanojevic.me) · SGP4 at display time — orbital elements, not illustrative tracks";
   const liveProvenance =
     "CelesTrak GP JSON (OMM) · SGP4-propagated at display time — orbital elements, not illustrative tracks";
   const byNorad = new Map<string, Record<string, unknown>>();
   const errors: string[] = [];
+
+  for (const norad of LIVE_TLE_NORADS) {
+    const url = `https://tle.ivanstanojevic.me/api/tle/${norad}`;
+    try {
+      const res = await fetchRaw(url, { accept: "application/json" });
+      if (!res.ok) {
+        errors.push(`tle ${norad}: HTTP ${res.status}`);
+        continue;
+      }
+      const rec = tleRecordFromApi(JSON.parse(res.text) as unknown);
+      if (!rec) {
+        errors.push(`tle ${norad}: malformed`);
+        continue;
+      }
+      byNorad.set(String(rec.NORAD_CAT_ID), rec);
+    } catch (err) {
+      const message = err instanceof Error ? err.message.slice(0, 120) : "error";
+      errors.push(`tle ${norad}: ${message}`);
+    }
+  }
+
+  if (byNorad.size > 0) {
+    const records = [...byNorad.values()];
+    await ctx.runMutation(internal.layers.replaceSnapshot, {
+      layer: "satellites",
+      fetchedAt: now,
+      status: "LIVE",
+      recordsJson: JSON.stringify(records),
+      recordsReceived: records.length,
+      errorSummary: errors.length ? errors.join("; ").slice(0, 400) : undefined,
+      provenance: tleProvenance,
+    });
+    return;
+  }
 
   for (const url of CELESTRAK_URLS) {
     try {

@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   geodeticFromOmm,
+  geodeticFromSatRecord,
   geodeticFromTle,
   type OmmRecord,
 } from "@/lib/sgp4";
@@ -51,6 +52,24 @@ describe("geodeticFromTle (SGP4)", () => {
     expect(a!.latitude).toBeLessThanOrEqual(90);
     expect(a!.longitude).toBeGreaterThanOrEqual(-180);
     expect(a!.longitude).toBeLessThanOrEqual(180);
+    expect(
+      Math.abs(a!.latitude - b!.latitude) + Math.abs(a!.longitude - b!.longitude),
+    ).toBeGreaterThan(0.5);
+  });
+
+  it("propagates a TLE-bearing sat record (live TLE path)", () => {
+    const rec: OmmRecord = {
+      OBJECT_NAME: "ISS (ZARYA)",
+      NORAD_CAT_ID: 25544,
+      TLE_LINE1: line1,
+      TLE_LINE2: line2,
+    };
+    const a = geodeticFromSatRecord(rec, T0);
+    const b = geodeticFromSatRecord(rec, T1);
+    expect(a).not.toBeNull();
+    expect(b).not.toBeNull();
+    expect(a!.latitude).toBeGreaterThanOrEqual(-90);
+    expect(a!.latitude).toBeLessThanOrEqual(90);
     expect(
       Math.abs(a!.latitude - b!.latitude) + Math.abs(a!.longitude - b!.longitude),
     ).toBeGreaterThan(0.5);

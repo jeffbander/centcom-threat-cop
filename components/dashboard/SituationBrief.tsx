@@ -15,7 +15,7 @@ import { useDashboard } from "./DashboardContext";
 import { FIRMS_NEAR_EVENT_KM, firmsNearEvent } from "@/lib/spatialJoin";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import {
-  geodeticFromOmm,
+  geodeticFromSatRecord,
   satelliteContactId,
   type OmmRecord,
 } from "@/lib/sgp4";
@@ -99,7 +99,7 @@ export function SituationBrief() {
       for (const raw of recs) {
         if (!raw || typeof raw !== "object") continue;
         const omm = raw as OmmRecord;
-        const geo = geodeticFromOmm(omm, epoch);
+        const geo = geodeticFromSatRecord(omm, epoch);
         if (!geo) continue;
         out.push({
           layerKey: "satellites",

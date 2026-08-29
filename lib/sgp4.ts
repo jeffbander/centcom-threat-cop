@@ -18,16 +18,18 @@ export type OmmRecord = {
   OBJECT_NAME: string;
   OBJECT_ID?: string;
   NORAD_CAT_ID: number | string;
-  EPOCH: string;
-  MEAN_MOTION: number | string;
-  ECCENTRICITY: number | string;
-  INCLINATION: number | string;
-  RA_OF_ASC_NODE: number | string;
-  ARG_OF_PERICENTER: number | string;
-  MEAN_ANOMALY: number | string;
-  BSTAR: number | string;
-  MEAN_MOTION_DOT: number | string;
-  MEAN_MOTION_DDOT: number | string;
+  EPOCH?: string;
+  TLE_LINE1?: string;
+  TLE_LINE2?: string;
+  MEAN_MOTION?: number | string;
+  ECCENTRICITY?: number | string;
+  INCLINATION?: number | string;
+  RA_OF_ASC_NODE?: number | string;
+  ARG_OF_PERICENTER?: number | string;
+  MEAN_ANOMALY?: number | string;
+  BSTAR?: number | string;
+  MEAN_MOTION_DOT?: number | string;
+  MEAN_MOTION_DDOT?: number | string;
   ELEMENT_SET_NO?: number | string;
   REV_AT_EPOCH?: number | string;
   EPHEMERIS_TYPE?: number | string;
@@ -53,16 +55,16 @@ function asOmmJson(omm: OmmRecord): OMMJsonObject {
     OBJECT_NAME: omm.OBJECT_NAME,
     OBJECT_ID: omm.OBJECT_ID ?? String(omm.NORAD_CAT_ID),
     NORAD_CAT_ID: omm.NORAD_CAT_ID,
-    EPOCH: omm.EPOCH,
-    MEAN_MOTION: omm.MEAN_MOTION,
-    ECCENTRICITY: omm.ECCENTRICITY,
-    INCLINATION: omm.INCLINATION,
-    RA_OF_ASC_NODE: omm.RA_OF_ASC_NODE,
-    ARG_OF_PERICENTER: omm.ARG_OF_PERICENTER,
-    MEAN_ANOMALY: omm.MEAN_ANOMALY,
-    BSTAR: omm.BSTAR,
-    MEAN_MOTION_DOT: omm.MEAN_MOTION_DOT,
-    MEAN_MOTION_DDOT: omm.MEAN_MOTION_DDOT,
+    EPOCH: omm.EPOCH ?? "",
+    MEAN_MOTION: omm.MEAN_MOTION ?? 0,
+    ECCENTRICITY: omm.ECCENTRICITY ?? 0,
+    INCLINATION: omm.INCLINATION ?? 0,
+    RA_OF_ASC_NODE: omm.RA_OF_ASC_NODE ?? 0,
+    ARG_OF_PERICENTER: omm.ARG_OF_PERICENTER ?? 0,
+    MEAN_ANOMALY: omm.MEAN_ANOMALY ?? 0,
+    BSTAR: omm.BSTAR ?? 0,
+    MEAN_MOTION_DOT: omm.MEAN_MOTION_DOT ?? 0,
+    MEAN_MOTION_DDOT: omm.MEAN_MOTION_DDOT ?? 0,
     ELEMENT_SET_NO: omm.ELEMENT_SET_NO ?? 0,
     REV_AT_EPOCH: omm.REV_AT_EPOCH,
     EPHEMERIS_TYPE: 0,
@@ -87,11 +89,23 @@ function eciToGeodeticAt(
   };
 }
 
+/** Propagate stored satellite elements: live TLE lines, else GP/OMM. */
+export function geodeticFromSatRecord(
+  record: OmmRecord,
+  epochMs: number,
+): GeodeticPosition | null {
+  if (record.TLE_LINE1 && record.TLE_LINE2) {
+    return geodeticFromTle(record.TLE_LINE1, record.TLE_LINE2, epochMs);
+  }
+  return geodeticFromOmm(record, epochMs);
+}
+
 /** Propagate CelesTrak GP/OMM elements with SGP4 to `epochMs`. */
 export function geodeticFromOmm(
   omm: OmmRecord,
   epochMs: number,
 ): GeodeticPosition | null {
+  if (!omm.EPOCH || omm.MEAN_MOTION == null) return null;
   if (!Number.isFinite(epochMs)) return null;
   try {
     const satrec = json2satrec(asOmmJson(omm));

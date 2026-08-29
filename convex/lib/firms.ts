@@ -149,6 +149,28 @@ export function parseFirmsCsv(csv: string, cap = FIRMS_MAX_DETECTIONS): FirmsDet
   }
 
   const detections: FirmsDetection[] = [];
+  const consider = (det: FirmsDetection) => {
+    if (detections.length < cap) {
+      detections.push(det);
+      return;
+    }
+    let minI = 0;
+    for (let i = 1; i < detections.length; i++) {
+      const a = detections[i];
+      const b = detections[minI];
+      if (a.frp < b.frp || (a.frp === b.frp && a.acquiredAt < b.acquiredAt)) {
+        minI = i;
+      }
+    }
+    const weakest = detections[minI];
+    if (
+      det.frp > weakest.frp ||
+      (det.frp === weakest.frp && det.acquiredAt > weakest.acquiredAt)
+    ) {
+      detections[minI] = det;
+    }
+  };
+
   for (let r = 1; r < lines.length; r++) {
     const cells = parseCsvLine(lines[r]);
     const lat = Number(cells[idx.latitude]);
@@ -166,7 +188,7 @@ export function parseFirmsCsv(csv: string, cap = FIRMS_MAX_DETECTIONS): FirmsDet
     const satellite = (idx.satellite !== undefined ? cells[idx.satellite] : "")
       .trim() || "unknown";
     const instrument = (idx.instrument !== undefined ? cells[idx.instrument] : "")
-      .trim() || "unknown";
+      .trim() || "VIIRS";
     const confidence = (idx.confidence !== undefined ? cells[idx.confidence] : "")
       .trim() || "";
     const brightnessRaw =
@@ -185,7 +207,7 @@ export function parseFirmsCsv(csv: string, cap = FIRMS_MAX_DETECTIONS): FirmsDet
       brightness: Number.isFinite(brightnessRaw) ? brightnessRaw : null,
       daynight,
     };
-    detections.push({
+    consider({
       id: firmsDetectionId(row),
       ...row,
     });

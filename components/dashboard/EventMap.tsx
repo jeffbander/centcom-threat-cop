@@ -17,7 +17,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import type { MapEvent } from "./LeafletMapCanvas";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import {
-  geodeticFromOmm,
+  geodeticFromSatRecord,
   satelliteContactId,
   type OmmRecord,
 } from "@/lib/sgp4";
@@ -107,7 +107,7 @@ export function EventMap({
     for (const raw of recs) {
       if (!raw || typeof raw !== "object") continue;
       const omm = raw as OmmRecord;
-      const geo = geodeticFromOmm(omm, now);
+      const geo = geodeticFromSatRecord(omm, now);
       if (!geo) continue;
       out.push({
         id: satelliteContactId(omm),

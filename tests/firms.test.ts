@@ -39,6 +39,19 @@ describe("parseFirmsCsv", () => {
     const detections = parseFirmsCsv(csv);
     expect(detections.every((d) => Math.abs(d.latitude) <= 90)).toBe(true);
   });
+
+  it("parses keyless NASA 24h CSV headers (no instrument column)", () => {
+    const publicCsv = [
+      "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,confidence,version,bright_ti5,frp,daynight",
+      "19.40081,-155.27916,339.18,0.7,0.75,2026-08-28,0039,N,nominal,2.0NRT,296.7,16.51,D",
+    ].join("\n");
+    const detections = parseFirmsCsv(publicCsv);
+    expect(detections).toHaveLength(1);
+    expect(detections[0].frp).toBeCloseTo(16.51, 5);
+    expect(detections[0].instrument).toBe("VIIRS");
+    expect(detections[0].acquiredAt).toBe(Date.parse("2026-08-28T00:39:00Z"));
+    expect(Math.abs(detections[0].latitude)).toBeLessThanOrEqual(90);
+  });
 });
 
 describe("resolveFirmsSourceState", () => {
