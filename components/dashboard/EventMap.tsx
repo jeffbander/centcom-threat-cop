@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -15,6 +15,13 @@ import { useDashboard } from "./DashboardContext";
 import { formatRelativeTime } from "@/lib/format";
 import { trackProductEvent } from "@/lib/analytics";
 import type { MapEvent } from "./LeafletMapCanvas";
+import type { FirmsDetection } from "@/convex/lib/firms";
+import {
+  geodeticFromOmm,
+  satelliteContactId,
+  type OmmRecord,
+} from "@/lib/sgp4";
+import type { LiveSatellite } from "./LeafletMapCanvas";
 
 const LeafletMapCanvas = dynamic(() => import("./LeafletMapCanvas"), {
   ssr: false,
@@ -34,14 +41,24 @@ export function EventMap({
   showSatellites = true,
   showAois = true,
   showRangeRings = true,
+  showOsintInfra = true,
+  showFirms = true,
 }: {
   showForces?: boolean;
   showSatellites?: boolean;
   showAois?: boolean;
   showRangeRings?: boolean;
+  showOsintInfra?: boolean;
+  showFirms?: boolean;
 }) {
-  const { filters, selectedEventId, setSelectedEventId, preferredView } =
-    useDashboard();
+  const {
+    filters,
+    selectedEventId,
+    setSelectedEventId,
+    selectedContact,
+    setSelectedContact,
+    preferredView,
+  } = useDashboard();
   const events = useQuery(api.events.list, {
     categories: filters.categories,
     severities: filters.severities,
@@ -52,13 +69,57 @@ export function EventMap({
   });
   const track = useMutation(api.analytics.track);
   const [showList, setShowList] = useState(false);
-  const [satTick, setSatTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!showSatellites) return;
-    const id = setInterval(() => setSatTick((t) => t + 1), 450);
+    const ms = showSatellites ? 1000 : 15_000;
+    const id = setInterval(() => setNow(Date.now()), ms);
     return () => clearInterval(id);
   }, [showSatellites]);
+
+  const firmsSnap = useQuery(api.layers.getSnapshot, {
+    layer: "firms",
+    now,
+  });
+  const satSnap = useQuery(api.layers.getSnapshot, {
+    layer: "satellites",
+    now,
+  });
+
+  const firmsDetections = useMemo((): FirmsDetection[] => {
+    const recs = firmsSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    return recs.filter((r): r is FirmsDetection => {
+      if (!r || typeof r !== "object") return false;
+      const d = r as FirmsDetection;
+      return (
+        typeof d.id === "string" &&
+        Number.isFinite(d.latitude) &&
+        Number.isFinite(d.longitude)
+      );
+    });
+  }, [firmsSnap]);
+
+  const liveSatellites = useMemo((): LiveSatellite[] => {
+    const recs = satSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    const out: LiveSatellite[] = [];
+    for (const raw of recs) {
+      if (!raw || typeof raw !== "object") continue;
+      const omm = raw as OmmRecord;
+      const geo = geodeticFromOmm(omm, now);
+      if (!geo) continue;
+      out.push({
+        id: satelliteContactId(omm),
+        name: omm.OBJECT_NAME,
+        norad: String(omm.NORAD_CAT_ID),
+        latitude: geo.latitude,
+        longitude: geo.longitude,
+        altitudeKm: geo.altitudeKm,
+      });
+    }
+    return out;
+  }, [satSnap, now]);
 
   const rows = (events as EventRow[] | undefined) ?? [];
 
@@ -103,9 +164,19 @@ export function EventMap({
               Forces
             </span>
           )}
+          {showFirms && (
+            <span className="text-[var(--ok)] font-mono text-[10px] uppercase">
+              FIRMS {firmsSnap?.status ?? "…"}
+            </span>
+          )}
           {showSatellites && (
-            <span className="text-[var(--demo)] font-mono text-[10px] uppercase">
-              SAT tracks
+            <span className="text-[var(--ok)] font-mono text-[10px] uppercase">
+              SGP4 {satSnap?.status ?? "…"}
+            </span>
+          )}
+          {showOsintInfra && (
+            <span className="text-[var(--ok)] font-mono text-[10px] uppercase">
+              OSINT infra
             </span>
           )}
           <button
@@ -134,7 +205,20 @@ export function EventMap({
               showSatellites={showSatellites}
               showAois={showAois}
               showRangeRings={showRangeRings}
-              satTick={satTick}
+              showOsintInfra={showOsintInfra}
+              showFirms={showFirms}
+              firmsDetections={firmsDetections}
+              liveSatellites={liveSatellites}
+              selectedContact={selectedContact}
+              onSelectContact={setSelectedContact}
+              firmsProvenance={
+                firmsSnap?.provenance ??
+                "NASA FIRMS — public hotspot detections, not events"
+              }
+              satProvenance={
+                satSnap?.provenance ??
+                "CelesTrak GP/OMM · SGP4 at display time"
+              }
             />
           </div>
         )}

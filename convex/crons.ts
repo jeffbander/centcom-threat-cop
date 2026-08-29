@@ -11,6 +11,14 @@ crons.interval(
   { clearSynthetic: true },
 );
 
+/** FIRMS + CelesTrak GP snapshots — contacts, not events. */
+crons.interval(
+  "live overlay layer snapshots",
+  { minutes: 30 },
+  internal.providers.fetchLayers.refresh,
+  { layer: "all" },
+);
+
 // X OSINT polling is intentionally NOT on a Convex cron.
 // It only runs from the logged-in client while the app is open
 // (see components/dashboard/XOsintPoller.tsx — every 30 minutes).

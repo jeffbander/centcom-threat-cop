@@ -88,8 +88,38 @@ export const PROVIDERS = [
   "strategic_theaters",
   "open_sources",
   "x_osint",
+  "cisa_kev",
+  "health_outbreaks",
+  "osint_news",
+  "nga_navwarn",
 ] as const;
 export type ProviderId = (typeof PROVIDERS)[number];
+
+/** Providers expected on a live open-source refresh (excludes synthetic / X). */
+export const LIVE_INGEST_PROVIDERS = [
+  "usgs",
+  "gdacs",
+  "eonet",
+  "un_peace",
+  "strategic_theaters",
+  "cisa_kev",
+  "health_outbreaks",
+  "osint_news",
+  "nga_navwarn",
+] as const;
+
+export const PROVIDER_LABELS: Record<(typeof LIVE_INGEST_PROVIDERS)[number], string> =
+  {
+    usgs: "USGS seismic",
+    gdacs: "GDACS hazards",
+    eonet: "NASA EONET",
+    un_peace: "UN peace/security",
+    strategic_theaters: "Theater baselines",
+    cisa_kev: "CISA KEV",
+    health_outbreaks: "Health outbreaks",
+    osint_news: "OSINT news",
+    nga_navwarn: "NGA nav warnings",
+  };
 
 export const SEVERITY_THREAT_LABELS: Record<Severity, string> = {
   critical: "THREAT CRITICAL",

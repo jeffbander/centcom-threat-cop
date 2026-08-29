@@ -13,6 +13,7 @@ export function Header() {
   const { filters, setFilters } = useDashboard();
   const freshness = useQuery(api.ingestion.freshness);
   const requestRefresh = useMutation(api.ingestion.requestRefresh);
+  const requestLayerRefresh = useMutation(api.layers.requestRefresh);
   const track = useMutation(api.analytics.track);
   const [clock, setClock] = useState(() => formatUtcClock());
   const [refreshing, setRefreshing] = useState(false);
@@ -28,6 +29,11 @@ export function Header() {
     setRefreshing(true);
     try {
       await requestRefresh({});
+      try {
+        await requestLayerRefresh({ layer: "all" });
+      } catch {
+        /* layer rate-limit is independent */
+      }
       trackProductEvent({ name: "refresh_requested" });
       void track({ name: "refresh_requested" });
     } catch (e) {

@@ -187,4 +187,23 @@ export default defineSchema({
     .index("by_handle_postedAt", ["handle", "postedAt"])
     .index("by_feedChannel_postedAt", ["feedChannel", "postedAt"])
     .index("by_signalScore", ["signalScore"]),
+
+  /**
+   * Viewport-/catalog-bounded live overlay snapshots (FIRMS, CelesTrak).
+   * Contacts — not events. One current row per layer; refresh replaces.
+   */
+  layerSnapshots: defineTable({
+    layer: v.union(v.literal("firms"), v.literal("satellites")),
+    fetchedAt: v.number(),
+    status: v.union(
+      v.literal("LIVE"),
+      v.literal("STALE"),
+      v.literal("KEY_REQUIRED"),
+      v.literal("UNAVAILABLE"),
+    ),
+    recordsJson: v.string(),
+    recordsReceived: v.number(),
+    errorSummary: v.optional(v.string()),
+    provenance: v.string(),
+  }).index("by_layer_and_fetchedAt", ["layer", "fetchedAt"]),
 });

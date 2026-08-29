@@ -26,6 +26,8 @@ describe("allowlists", () => {
     expect(isProviderId("synthetic")).toBe(true);
     expect(isProviderId("usgs")).toBe(true);
     expect(isProviderId("open_sources")).toBe(true);
+    expect(isProviderId("cisa_kev")).toBe(true);
+    expect(isProviderId("nga_navwarn")).toBe(true);
     expect(isProviderId("scraped-random")).toBe(false);
   });
 });

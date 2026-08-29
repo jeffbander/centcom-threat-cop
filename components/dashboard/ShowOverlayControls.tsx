@@ -1,30 +1,74 @@
 "use client";
 
+import type { LayerSourceState } from "@/convex/lib/layerState";
+
 export type OverlayToggles = {
   forces: boolean;
   satellites: boolean;
+  firms: boolean;
   newsWire: boolean;
   aois: boolean;
   rangeRings: boolean;
   milHud: boolean;
   xOsint: boolean;
+  osintInfra: boolean;
 };
+
+export type LayerChip = {
+  status: LayerSourceState | string;
+  count: number;
+};
+
+function SourceChip({
+  label,
+  chip,
+}: {
+  label: string;
+  chip?: LayerChip;
+}) {
+  if (!chip) return null;
+  const tone =
+    chip.status === "LIVE"
+      ? "text-[var(--ok)] border-[var(--ok)]/50"
+      : chip.status === "STALE"
+        ? "text-[var(--high)] border-[var(--high)]/50"
+        : chip.status === "KEY_REQUIRED"
+          ? "text-[var(--text-faint)] border-[var(--border)]"
+          : "text-[var(--critical)] border-[var(--critical)]/50";
+  return (
+    <span
+      className={`font-mono text-[9px] uppercase tracking-wide px-1 py-0.5 rounded border ${tone}`}
+      title={`${label} ${chip.status} · ${chip.count}`}
+    >
+      {chip.status}
+      {chip.status === "LIVE" || chip.status === "STALE"
+        ? ` · ${chip.count}`
+        : ""}
+    </span>
+  );
+}
 
 export function ShowOverlayControls({
   value,
   onChange,
+  firmsChip,
+  satChip,
 }: {
   value: OverlayToggles;
   onChange: (next: OverlayToggles) => void;
+  firmsChip?: LayerChip;
+  satChip?: LayerChip;
 }) {
   const items: Array<{ key: keyof OverlayToggles; label: string }> = [
+    { key: "firms", label: "FIRMS fires" },
+    { key: "satellites", label: "CelesTrak SGP4" },
     { key: "milHud", label: "Military HUD" },
     { key: "forces", label: "BLUFOR / OPFOR" },
     { key: "rangeRings", label: "Range rings" },
     { key: "aois", label: "Theater AOIs" },
-    { key: "satellites", label: "Satellite tracks" },
     { key: "newsWire", label: "OSINT wire" },
     { key: "xOsint", label: "X accounts" },
+    { key: "osintInfra", label: "OSINT infra" },
   ];
 
   return (
@@ -50,10 +94,16 @@ export function ShowOverlayControls({
             className="accent-[var(--accent-dim)]"
           />
           {item.label}
+          {item.key === "firms" ? (
+            <SourceChip label="FIRMS" chip={firmsChip} />
+          ) : null}
+          {item.key === "satellites" ? (
+            <SourceChip label="Sats" chip={satChip} />
+          ) : null}
         </label>
       ))}
       <span className="text-[var(--text-faint)] ml-auto max-w-lg text-right text-[10px] font-mono">
-        SENSITIVE · not live troop GPS · not real TLEs
+        FIRMS NASA public · sats CelesTrak SGP4 · BLUFOR/OPFOR illustrative
       </span>
     </div>
   );

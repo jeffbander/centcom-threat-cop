@@ -14,6 +14,9 @@ import { EventMap } from "./EventMap";
 import { IntelligenceFeed } from "./IntelligenceFeed";
 import { XOsintFeed } from "./XOsintFeed";
 import { XOsintPoller } from "./XOsintPoller";
+import { SituationBrief } from "./SituationBrief";
+import { ContactSubjectPanel } from "./ContactSubjectPanel";
+import { LayerPoller } from "./LayerPoller";
 import { SatelliteLinkStatus } from "./SatelliteLinkStatus";
 import { EventDetailPanel } from "./EventDetailPanel";
 import { NewsTicker } from "./NewsTicker";
@@ -35,14 +38,28 @@ function DashboardInner() {
   const [overlays, setOverlays] = useState<OverlayToggles>({
     forces: true,
     satellites: true,
+    firms: true,
     // Default off so Operational Briefing has vertical room
     newsWire: false,
     aois: true,
     rangeRings: false,
     milHud: false,
     xOsint: true,
+    osintInfra: true,
   });
-  const [rightTab, setRightTab] = useState<"threat" | "xosint">("xosint");
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(id);
+  }, []);
+  const firmsSnap = useQuery(api.layers.getSnapshot, { layer: "firms", now });
+  const satSnap = useQuery(api.layers.getSnapshot, {
+    layer: "satellites",
+    now,
+  });
+  const [rightTab, setRightTab] = useState<"sitrep" | "threat" | "xosint">(
+    "sitrep",
+  );
 
   useEffect(() => {
     if (bootstrapped.current) return;
@@ -64,9 +81,26 @@ function DashboardInner() {
     <div className="h-screen flex flex-col overflow-hidden gsm-mil-console">
       {/* X polls only while this authenticated dashboard is mounted */}
       <XOsintPoller enabled={overlays.xOsint} />
+      <LayerPoller />
       <Header />
       <OverviewBar />
-      <ShowOverlayControls value={overlays} onChange={setOverlays} />
+      <ShowOverlayControls
+        value={overlays}
+        onChange={setOverlays}
+        firmsChip={
+          firmsSnap
+            ? {
+                status: firmsSnap.status,
+                count: firmsSnap.recordsReceived,
+              }
+            : undefined
+        }
+        satChip={
+          satSnap
+            ? { status: satSnap.status, count: satSnap.recordsReceived }
+            : undefined
+        }
+      />
       {overlays.milHud && <MilitaryHud />}
       {overlays.newsWire && <NewsTicker />}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
@@ -77,8 +111,11 @@ function DashboardInner() {
             showSatellites={overlays.satellites}
             showAois={overlays.aois}
             showRangeRings={overlays.rangeRings}
+            showOsintInfra={overlays.osintInfra}
+            showFirms={overlays.firms}
           />
           <div className="w-full lg:w-[min(36vw,460px)] xl:w-[480px] shrink-0 flex flex-col min-h-0 border-l border-[var(--border)]">
+            <ContactSubjectPanel />
             {/* Auth / geo monitoring strip — directly above Operational Briefing */}
             <SatelliteLinkStatus />
             <div
@@ -89,15 +126,15 @@ function DashboardInner() {
               <button
                 type="button"
                 role="tab"
-                aria-selected={rightTab === "xosint"}
-                onClick={() => setRightTab("xosint")}
-                className={`flex-[1.4] px-2 py-1.5 ${
-                  rightTab === "xosint"
-                    ? "text-[var(--critical)] border-b-2 border-[var(--critical)] bg-[var(--critical-wash)]"
+                aria-selected={rightTab === "sitrep"}
+                onClick={() => setRightTab("sitrep")}
+                className={`flex-1 px-2 py-1.5 ${
+                  rightTab === "sitrep"
+                    ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
                     : "text-[var(--text-faint)] hover:text-[var(--text)]"
                 }`}
               >
-                Operational Briefing
+                Sitrep
               </button>
               <button
                 type="button"
@@ -110,11 +147,26 @@ function DashboardInner() {
                     : "text-[var(--text-faint)] hover:text-[var(--text)]"
                 }`}
               >
-                Threat feed
+                Threat
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={rightTab === "xosint"}
+                onClick={() => setRightTab("xosint")}
+                className={`flex-1 px-2 py-1.5 ${
+                  rightTab === "xosint"
+                    ? "text-[var(--critical)] border-b-2 border-[var(--critical)] bg-[var(--critical-wash)]"
+                    : "text-[var(--text-faint)] hover:text-[var(--text)]"
+                }`}
+              >
+                X OSINT
               </button>
             </div>
             <div className="flex-1 min-h-0 flex flex-col [&>section]:border-l-0 [&>section]:w-full [&>section]:lg:w-full">
-              {rightTab === "threat" ? (
+              {rightTab === "sitrep" ? (
+                <SituationBrief />
+              ) : rightTab === "threat" ? (
                 <IntelligenceFeed />
               ) : overlays.xOsint ? (
                 <XOsintFeed />

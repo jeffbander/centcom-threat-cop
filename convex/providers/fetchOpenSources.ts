@@ -10,6 +10,12 @@ import {
   fetchUsgsEvents,
   strategicTheaterBaselines,
 } from "./openSources";
+import {
+  fetchCisaKev,
+  fetchHealthOutbreaks,
+  fetchNgaNavWarnings,
+  fetchOsintNews,
+} from "./worldIntel";
 import type { ProviderRecord } from "../lib/normalize";
 
 /**
@@ -39,6 +45,10 @@ export const refreshAll = internalAction({
       { provider: "gdacs", run: () => fetchGdacsEvents(now) },
       { provider: "eonet", run: () => fetchEonetEvents(now) },
       { provider: "un_peace", run: () => fetchUnPeaceSecurity(now) },
+      { provider: "cisa_kev", run: () => fetchCisaKev(now) },
+      { provider: "health_outbreaks", run: () => fetchHealthOutbreaks(now) },
+      { provider: "osint_news", run: () => fetchOsintNews(now) },
+      { provider: "nga_navwarn", run: () => fetchNgaNavWarnings(now) },
     ];
 
     for (const job of jobs) {

@@ -11,7 +11,7 @@ const FETCH_TIMEOUT_MS = 12_000;
 const MAX_BODY_BYTES = 2_500_000;
 const USER_AGENT = "GlobalSituationMonitor/1.0 (MSWlab.ai prototype; open-source ingest)";
 
-async function fetchText(url: string): Promise<string> {
+export async function fetchText(url: string): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
@@ -35,16 +35,16 @@ async function fetchText(url: string): Promise<string> {
   }
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
+export async function fetchJson<T>(url: string): Promise<T> {
   const text = await fetchText(url);
   return JSON.parse(text) as T;
 }
 
-function clip(s: string, n: number): string {
+export function clip(s: string, n: number): string {
   return s.replace(/\s+/g, " ").trim().slice(0, n);
 }
 
-function simpleHash(s: string): string {
+export function simpleHash(s: string): string {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
@@ -53,7 +53,7 @@ function simpleHash(s: string): string {
   return (h >>> 0).toString(36);
 }
 
-function httpsOnly(url: string | undefined | null): string | null {
+export function httpsOnly(url: string | undefined | null): string | null {
   if (!url || typeof url !== "string") return null;
   try {
     const u = new URL(url);
@@ -310,7 +310,7 @@ export async function fetchEonetEvents(now = Date.now()): Promise<ProviderRecord
 }
 
 // ——— UN Peace & Security RSS (geopolitical) ———
-function parseRssItems(xml: string): Array<{
+export function parseRssItems(xml: string): Array<{
   title: string;
   link: string;
   description: string;
@@ -322,17 +322,26 @@ function parseRssItems(xml: string): Array<{
     description: string;
     pubDate?: string;
   }> = [];
-  const chunks = xml.split(/<item[\s>]/i).slice(1);
-  for (const chunk of chunks.slice(0, 30)) {
+  const rssChunks = xml.split(/<item[\s>]/i).slice(1);
+  const atomChunks = xml.split(/<entry[\s>]/i).slice(1);
+  const chunks = (rssChunks.length ? rssChunks : atomChunks).slice(0, 30);
+  for (const chunk of chunks) {
     const title = (chunk.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/i) ||
-      chunk.match(/<title>(.*?)<\/title>/i))?.[1];
-    const link = (chunk.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/i) ||
-      chunk.match(/<link>(.*?)<\/link>/i))?.[1];
+      chunk.match(/<title[^>]*>([\s\S]*?)<\/title>/i))?.[1];
+    const link =
+      (chunk.match(/<link><!\[CDATA\[(.*?)\]\]><\/link>/i) ||
+        chunk.match(/<link>(.*?)<\/link>/i))?.[1] ||
+      chunk.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1];
     const description = (chunk.match(
       /<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/i,
-    ) || chunk.match(/<description>([\s\S]*?)<\/description>/i))?.[1];
+    ) ||
+      chunk.match(/<description>([\s\S]*?)<\/description>/i) ||
+      chunk.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i) ||
+      chunk.match(/<content[^>]*>([\s\S]*?)<\/content>/i))?.[1];
     const pubDate = (chunk.match(/<pubDate>(.*?)<\/pubDate>/i) ||
-      chunk.match(/<dc:date>(.*?)<\/dc:date>/i))?.[1];
+      chunk.match(/<dc:date>(.*?)<\/dc:date>/i) ||
+      chunk.match(/<updated>(.*?)<\/updated>/i) ||
+      chunk.match(/<published>(.*?)<\/published>/i))?.[1];
     if (!title || !link) continue;
     const cleanLink = httpsOnly(link.trim());
     if (!cleanLink) continue;
@@ -349,7 +358,7 @@ function parseRssItems(xml: string): Array<{
   return items;
 }
 
-function threatSeverityFromText(text: string): ProviderRecord["severity"] {
+export function threatSeverityFromText(text: string): ProviderRecord["severity"] {
   if (/\b(war|invasion|missile|airstrike|nuclear|mass.?casualt|genocide|offensive)\b/i.test(text))
     return "critical";
   if (/\b(conflict|attack|strike|combat|troop|military|ceasefire.?collapse|sanction)\b/i.test(text))

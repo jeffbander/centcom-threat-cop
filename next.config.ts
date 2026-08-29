@@ -75,6 +75,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  transpilePackages: ["satellite.js"],
   turbopack: {
     root: process.cwd(),
   },

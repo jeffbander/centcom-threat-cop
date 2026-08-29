@@ -2,7 +2,7 @@
 
 /**
  * Real basemap + military COP overlays (Leaflet + free Carto dark tiles).
- * Force / satellite layers are ILLUSTRATIVE for show — not live tracking.
+ * FIRMS + CelesTrak SGP4 are live contacts. Force markers stay illustrative.
  */
 
 import { Fragment, useEffect, useMemo } from "react";
@@ -29,15 +29,23 @@ import {
 } from "@/lib/constants";
 import { formatRelativeTime } from "@/lib/format";
 import {
-  ILLUSTRATIVE_SATELLITES,
   ILLUSTRATIVE_UNITS,
   KIND_GLYPH,
-  SAT_KIND_COLOR,
   SIDE_COLOR,
   THEATER_AOIS,
   type ForceSide,
   type UnitKind,
 } from "@/lib/showOverlays";
+import type { FirmsDetection } from "@/convex/lib/firms";
+import type { SelectedContact } from "./DashboardContext";
+import {
+  OSINT_CABLES,
+  OSINT_KIND_COLOR,
+  OSINT_KIND_GLYPH,
+  OSINT_KIND_LABEL,
+  OSINT_SITES,
+  type OsintKind,
+} from "@/lib/osintOverlays";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
@@ -87,6 +95,79 @@ function forceIcon(side: ForceSide, kind: UnitKind, callsign?: string) {
   });
 }
 
+function osintIcon(kind: OsintKind, name: string) {
+  const color = OSINT_KIND_COLOR[kind];
+  const glyph = OSINT_KIND_GLYPH[kind];
+  const safe = name.replace(/"/g, "");
+  return L.divIcon({
+    className: "gsm-osint-icon",
+    html: `<div title="${safe}" style="
+      width:18px;height:18px;
+      background:#0b0f14ee;
+      border:1px solid ${color};
+      color:${color};
+      box-shadow:0 0 6px ${color}44;
+      display:flex;align-items:center;justify-content:center;
+      font:700 10px/1 ui-monospace,monospace;
+    ">${glyph}</div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
+}
+
+function OsintInfraLayer() {
+  return (
+    <>
+      {OSINT_CABLES.map((cable) => (
+        <Fragment key={cable.id}>
+          <Polyline
+            positions={cable.path}
+            pathOptions={{
+              color: OSINT_KIND_COLOR.cable,
+              weight: 2,
+              opacity: 0.55,
+              dashArray: "6 5",
+            }}
+          >
+            <Tooltip sticky>
+              <div className="text-xs max-w-[220px]">
+                <div className="font-semibold" style={{ color: OSINT_KIND_COLOR.cable }}>
+                  {cable.name}
+                </div>
+                <div className="text-[10px] opacity-70">{cable.note}</div>
+                <div className="text-[10px] uppercase tracking-wide mt-0.5">
+                  Approximate corridor · not the true cable
+                </div>
+              </div>
+            </Tooltip>
+          </Polyline>
+        </Fragment>
+      ))}
+      {OSINT_SITES.map((site) => (
+        <Marker
+          key={site.id}
+          position={[site.latitude, site.longitude]}
+          icon={osintIcon(site.kind, site.name)}
+          zIndexOffset={400}
+        >
+          <Tooltip direction="top" offset={[0, -8]}>
+            <div className="text-xs max-w-[240px]">
+              <div className="font-bold text-[10px] uppercase tracking-wide opacity-70">
+                {OSINT_KIND_LABEL[site.kind]}
+              </div>
+              <div className="font-semibold" style={{ color: OSINT_KIND_COLOR[site.kind] }}>
+                {site.name}
+              </div>
+              <div className="opacity-80">{site.country}</div>
+              <div className="text-[10px] opacity-70 mt-0.5">{site.note}</div>
+            </div>
+          </Tooltip>
+        </Marker>
+      ))}
+    </>
+  );
+}
+
 function satIcon(color: string, name: string) {
   return L.divIcon({
     className: "gsm-sat-icon",
@@ -107,12 +188,23 @@ function satIcon(color: string, name: string) {
   });
 }
 
+export type LiveSatellite = {
+  id: string;
+  name: string;
+  norad: string;
+  latitude: number;
+  longitude: number;
+  altitudeKm: number;
+};
+
 function FitOrFocus({
   events,
   selectedId,
+  selectedContact,
 }: {
   events: MapEvent[];
   selectedId: Id<"events"> | null;
+  selectedContact: SelectedContact | null;
 }) {
   const map = useMap();
 
@@ -128,85 +220,155 @@ function FitOrFocus({
   }, [selectedId, events, map]);
 
   useEffect(() => {
+    if (selectedContact) {
+      map.flyTo(
+        [selectedContact.latitude, selectedContact.longitude],
+        Math.max(map.getZoom(), 4),
+        { duration: 0.55 },
+      );
+    }
+  }, [selectedContact, map]);
+
+  useEffect(() => {
     map.setView([28, 40], 3);
   }, [map]);
 
   return null;
 }
 
-function SatelliteLayer({ tick }: { tick: number }) {
+function LiveSatelliteLayer({
+  satellites,
+  selectedId,
+  onSelect,
+  provenance,
+}: {
+  satellites: LiveSatellite[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+}) {
+  const color = "#a78bfa";
   return (
     <>
-      {ILLUSTRATIVE_SATELLITES.map((sat) => {
-        const color = SAT_KIND_COLOR[sat.kind];
-        const positions = sat.track.map(
-          (p) => [p.lat, p.lon] as [number, number],
-        );
-        const speed = sat.speed ?? 1;
-        const idx = Math.floor(tick * speed) % sat.track.length;
-        const cur = sat.track[idx];
-        const next = sat.track[(idx + 1) % sat.track.length];
-        // trail segment (last few points)
-        const trailStart = Math.max(0, idx - 8);
-        const trail = sat.track
-          .slice(trailStart, idx + 1)
-          .map((p) => [p.lat, p.lon] as [number, number]);
-
+      {satellites.map((sat) => {
+        const selected = selectedId === sat.id;
         return (
-          <Fragment key={sat.id}>
-            {/* Full ground track */}
-            <Polyline
-              positions={positions}
-              pathOptions={{
-                color,
-                weight: 1.25,
-                dashArray: "5 7",
-                opacity: 0.45,
-              }}
-            />
-            {/* Bright recent trail */}
-            {trail.length > 1 && (
-              <Polyline
-                positions={trail}
-                pathOptions={{
-                  color,
-                  weight: 2.5,
-                  opacity: 0.9,
-                }}
-              />
-            )}
-            {/* Sensor footprint */}
-            {sat.footprintKm && (
-              <Circle
-                center={[cur.lat, cur.lon]}
-                radius={sat.footprintKm * 1000}
-                pathOptions={{
-                  color,
-                  weight: 1,
-                  fillColor: color,
-                  fillOpacity: 0.06,
-                  dashArray: "2 4",
-                }}
-              />
-            )}
-            <Marker position={[cur.lat, cur.lon]} icon={satIcon(color, sat.name)}>
-              <Tooltip direction="top" offset={[0, -10]} opacity={0.98}>
-                <div className="text-xs min-w-[160px]">
-                  <div className="font-bold" style={{ color }}>
-                    {sat.name}
-                  </div>
-                  <div className="opacity-80">
-                    {sat.kind} · ILLUSTRATIVE track
-                  </div>
-                  <div className="text-[10px] opacity-70 mt-0.5">{sat.note}</div>
-                  <div className="text-[10px] opacity-60 font-mono mt-0.5">
-                    {cur.lat.toFixed(2)}°, {cur.lon.toFixed(2)}° →{" "}
-                    {next.lat.toFixed(1)}°, {next.lon.toFixed(1)}°
-                  </div>
+          <Marker
+            key={sat.id}
+            position={[sat.latitude, sat.longitude]}
+            icon={satIcon(selected ? "#e8eef6" : color, sat.name)}
+            zIndexOffset={selected ? 900 : 500}
+            eventHandlers={{
+              click: () =>
+                onSelect({
+                  kind: "satellite",
+                  id: sat.id,
+                  latitude: sat.latitude,
+                  longitude: sat.longitude,
+                  title: sat.name,
+                  subtitle: `NORAD ${sat.norad} · CelesTrak GP · SGP4`,
+                  details: [
+                    { label: "NORAD", value: sat.norad },
+                    {
+                      label: "Lat",
+                      value: `${sat.latitude.toFixed(3)}°`,
+                    },
+                    {
+                      label: "Lon",
+                      value: `${sat.longitude.toFixed(3)}°`,
+                    },
+                    {
+                      label: "Alt",
+                      value: `${sat.altitudeKm.toFixed(0)} km`,
+                    },
+                  ],
+                  provenance,
+                }),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -10]} opacity={0.98}>
+              <div className="text-xs min-w-[160px]">
+                <div className="font-bold" style={{ color }}>
+                  {sat.name}
                 </div>
-              </Tooltip>
-            </Marker>
-          </Fragment>
+                <div className="opacity-80">
+                  NORAD {sat.norad} · CelesTrak GP · SGP4
+                </div>
+                <div className="text-[10px] opacity-60 font-mono mt-0.5">
+                  {sat.latitude.toFixed(2)}°, {sat.longitude.toFixed(2)}° ·{" "}
+                  {sat.altitudeKm.toFixed(0)} km
+                </div>
+              </div>
+            </Tooltip>
+          </Marker>
+        );
+      })}
+    </>
+  );
+}
+
+function FirmsLayer({
+  detections,
+  selectedId,
+  onSelect,
+  provenance,
+}: {
+  detections: FirmsDetection[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+}) {
+  return (
+    <>
+      {detections.map((d) => {
+        const selected = selectedId === d.id;
+        const fill = d.frp >= 30 ? "#ef4444" : d.frp >= 10 ? "#f97316" : "#fbbf24";
+        return (
+          <CircleMarker
+            key={d.id}
+            center={[d.latitude, d.longitude]}
+            radius={selected ? 9 : 5}
+            pathOptions={{
+              color: selected ? "#e8eef6" : "#0b0f14",
+              weight: selected ? 2 : 1,
+              fillColor: fill,
+              fillOpacity: 0.9,
+            }}
+            eventHandlers={{
+              click: () =>
+                onSelect({
+                  kind: "firms",
+                  id: d.id,
+                  latitude: d.latitude,
+                  longitude: d.longitude,
+                  title: `FIRMS ${d.satellite} ${d.instrument}`,
+                  subtitle: `FRP ${d.frp.toFixed(1)} MW · contact, not an event`,
+                  details: [
+                    { label: "FRP", value: `${d.frp.toFixed(1)} MW` },
+                    { label: "Sensor", value: `${d.satellite} ${d.instrument}` },
+                    {
+                      label: "Acquired",
+                      value: new Date(d.acquiredAt).toISOString().slice(0, 16) + "Z",
+                    },
+                    { label: "Confidence", value: d.confidence || "—" },
+                    {
+                      label: "Lat/Lon",
+                      value: `${d.latitude.toFixed(3)}, ${d.longitude.toFixed(3)}`,
+                    },
+                  ],
+                  provenance,
+                }),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -4]}>
+              <div className="text-xs">
+                <div className="font-semibold">FIRMS hotspot</div>
+                <div className="opacity-80">
+                  FRP {d.frp.toFixed(1)} MW · {d.satellite} {d.instrument}
+                </div>
+              </div>
+            </Tooltip>
+          </CircleMarker>
         );
       })}
     </>
@@ -221,7 +383,14 @@ export default function LeafletMapCanvas({
   showSatellites,
   showAois = true,
   showRangeRings = true,
-  satTick,
+  showOsintInfra = true,
+  showFirms = true,
+  firmsDetections = [],
+  liveSatellites = [],
+  selectedContact = null,
+  onSelectContact,
+  firmsProvenance = "NASA FIRMS",
+  satProvenance = "CelesTrak GP · SGP4",
 }: {
   events: MapEvent[];
   selectedEventId: Id<"events"> | null;
@@ -230,7 +399,14 @@ export default function LeafletMapCanvas({
   showSatellites: boolean;
   showAois?: boolean;
   showRangeRings?: boolean;
-  satTick: number;
+  showOsintInfra?: boolean;
+  showFirms?: boolean;
+  firmsDetections?: FirmsDetection[];
+  liveSatellites?: LiveSatellite[];
+  selectedContact?: SelectedContact | null;
+  onSelectContact?: (c: SelectedContact) => void;
+  firmsProvenance?: string;
+  satProvenance?: string;
 }) {
   const validEvents = useMemo(
     () =>
@@ -261,7 +437,11 @@ export default function LeafletMapCanvas({
         maxZoom={19}
       />
 
-      <FitOrFocus events={validEvents} selectedId={selectedEventId} />
+      <FitOrFocus
+        events={validEvents}
+        selectedId={selectedEventId}
+        selectedContact={selectedContact}
+      />
 
       {/* Theater AOIs */}
       {showAois &&
@@ -288,7 +468,27 @@ export default function LeafletMapCanvas({
           </Polygon>
         ))}
 
-      {showSatellites && <SatelliteLayer tick={satTick} />}
+      {showFirms && onSelectContact && (
+        <FirmsLayer
+          detections={firmsDetections}
+          selectedId={selectedContact?.kind === "firms" ? selectedContact.id : null}
+          onSelect={onSelectContact}
+          provenance={firmsProvenance}
+        />
+      )}
+
+      {showSatellites && onSelectContact && (
+        <LiveSatelliteLayer
+          satellites={liveSatellites}
+          selectedId={
+            selectedContact?.kind === "satellite" ? selectedContact.id : null
+          }
+          onSelect={onSelectContact}
+          provenance={satProvenance}
+        />
+      )}
+
+      {showOsintInfra && <OsintInfraLayer />}
 
       {/* Range rings under force markers */}
       {showForces &&

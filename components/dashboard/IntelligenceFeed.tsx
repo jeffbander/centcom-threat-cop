@@ -14,8 +14,7 @@ import { trackProductEvent } from "@/lib/analytics";
 import type { Id } from "@/convex/_generated/dataModel";
 
 export function IntelligenceFeed() {
-  const { filters, selectedEventId, setSelectedEventId, preferredView } =
-    useDashboard();
+  const { filters, selectedEventId, setSelectedEventId } = useDashboard();
   const events = useQuery(api.events.list, {
     categories: filters.categories,
     severities: filters.severities,
@@ -26,10 +25,6 @@ export function IntelligenceFeed() {
   });
   const toggleBookmark = useMutation(api.bookmarks.toggle);
   const track = useMutation(api.analytics.track);
-
-  if (preferredView === "map") {
-    return null;
-  }
 
   return (
     <section
