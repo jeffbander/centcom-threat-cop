@@ -7,6 +7,7 @@ import {
   resolveLayerSourceState,
   type LayerSourceState,
 } from "./layerState";
+import { inUkraineAor } from "./geo";
 
 export type FirmsDetection = {
   id: string;
@@ -22,6 +23,7 @@ export type FirmsDetection = {
 };
 
 export const FIRMS_MAX_DETECTIONS = 400;
+export const FIRMS_UKRAINE_RESERVE = 120;
 
 const HEADER_ALIASES: Record<string, string> = {
   latitude: "latitude",
@@ -131,7 +133,33 @@ export function firmsDetectionId(d: {
  * Parse a NASA FIRMS area CSV. Returns detections sorted by FRP desc, capped.
  * Throws only on totally unusable input (not CSV). Empty valid CSV → [].
  */
-export function parseFirmsCsv(csv: string, cap = FIRMS_MAX_DETECTIONS): FirmsDetection[] {
+function pushCapped(list: FirmsDetection[], det: FirmsDetection, cap: number) {
+  if (list.length < cap) {
+    list.push(det);
+    return;
+  }
+  let minI = 0;
+  for (let i = 1; i < list.length; i++) {
+    const a = list[i];
+    const b = list[minI];
+    if (a.frp < b.frp || (a.frp === b.frp && a.acquiredAt < b.acquiredAt)) {
+      minI = i;
+    }
+  }
+  const weakest = list[minI];
+  if (
+    det.frp > weakest.frp ||
+    (det.frp === weakest.frp && det.acquiredAt > weakest.acquiredAt)
+  ) {
+    list[minI] = det;
+  }
+}
+
+export function parseFirmsCsv(
+  csv: string,
+  cap = FIRMS_MAX_DETECTIONS,
+  reserveCap = FIRMS_UKRAINE_RESERVE,
+): FirmsDetection[] {
   const text = csv.replace(/^\uFEFF/, "").trim();
   if (!text) return [];
   const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -149,26 +177,12 @@ export function parseFirmsCsv(csv: string, cap = FIRMS_MAX_DETECTIONS): FirmsDet
   }
 
   const detections: FirmsDetection[] = [];
+  const reserved: FirmsDetection[] = [];
   const consider = (det: FirmsDetection) => {
-    if (detections.length < cap) {
-      detections.push(det);
-      return;
+    if (inUkraineAor(det.latitude, det.longitude) && reserveCap > 0) {
+      pushCapped(reserved, det, reserveCap);
     }
-    let minI = 0;
-    for (let i = 1; i < detections.length; i++) {
-      const a = detections[i];
-      const b = detections[minI];
-      if (a.frp < b.frp || (a.frp === b.frp && a.acquiredAt < b.acquiredAt)) {
-        minI = i;
-      }
-    }
-    const weakest = detections[minI];
-    if (
-      det.frp > weakest.frp ||
-      (det.frp === weakest.frp && det.acquiredAt > weakest.acquiredAt)
-    ) {
-      detections[minI] = det;
-    }
+    pushCapped(detections, det, cap);
   };
 
   for (let r = 1; r < lines.length; r++) {
@@ -213,6 +227,15 @@ export function parseFirmsCsv(csv: string, cap = FIRMS_MAX_DETECTIONS): FirmsDet
     });
   }
 
+  reserved.sort((a, b) => b.frp - a.frp || b.acquiredAt - a.acquiredAt);
   detections.sort((a, b) => b.frp - a.frp || b.acquiredAt - a.acquiredAt);
-  return detections.slice(0, cap);
+  const seen = new Set(reserved.map((d) => d.id));
+  const out = [...reserved];
+  for (const d of detections) {
+    if (out.length >= cap) break;
+    if (seen.has(d.id)) continue;
+    out.push(d);
+    seen.add(d.id);
+  }
+  return out;
 }

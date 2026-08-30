@@ -99,6 +99,8 @@ export function ContactSubjectPanel() {
             ? "USGS"
             : selectedContact.kind === "launch"
               ? "LAUNCH"
+              : selectedContact.kind === "acled"
+                ? "ACLED"
               : "Satellite";
 
   return (

@@ -20,6 +20,7 @@ import {
   type AisContact,
 } from "../lib/ais";
 import { parseLaunchLibrary } from "../lib/launches";
+import { parseAcledPayload } from "../lib/acled";
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
 const FETCH_TIMEOUT_MS = 8_000;
@@ -68,7 +69,15 @@ const SEEDED_STATIONS_OMM: Array<Record<string, unknown>> = [
 
 async function fetchRaw(
   url: string,
-  opts?: { timeoutMs?: number; maxBytes?: number; accept?: string },
+  opts?: {
+    timeoutMs?: number;
+    maxBytes?: number;
+    accept?: string;
+    method?: string;
+    body?: string;
+    contentType?: string;
+    authorization?: string;
+  },
 ): Promise<{
   ok: boolean;
   status: number;
@@ -79,12 +88,17 @@ async function fetchRaw(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const headers: Record<string, string> = {
+      "User-Agent": USER_AGENT,
+      Accept: opts?.accept ?? "text/csv, application/json, text/plain, */*",
+    };
+    if (opts?.contentType) headers["Content-Type"] = opts.contentType;
+    if (opts?.authorization) headers.Authorization = opts.authorization;
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: opts?.accept ?? "text/csv, application/json, text/plain, */*",
-      },
+      method: opts?.method ?? "GET",
+      headers,
+      body: opts?.body,
       redirect: "follow",
     });
     const buf = await res.arrayBuffer();
@@ -522,6 +536,101 @@ async function refreshLaunches(ctx: ActionCtx) {
   }
 }
 
+async function acledAccessToken(): Promise<string | null> {
+  const staticTok = (process.env.ACLED_ACCESS_TOKEN ?? "").trim();
+  if (staticTok) return staticTok;
+  const email = (process.env.ACLED_EMAIL ?? "").trim();
+  const password = (process.env.ACLED_PASSWORD ?? "").trim();
+  if (!email || !password) return null;
+  const body = new URLSearchParams({
+    username: email,
+    password,
+    grant_type: "password",
+    client_id: "acled",
+    scope: "authenticated",
+  }).toString();
+  const res = await fetchRaw("https://acleddata.com/oauth/token", {
+    method: "POST",
+    contentType: "application/x-www-form-urlencoded",
+    accept: "application/json",
+    body,
+    timeoutMs: 12_000,
+    maxBytes: 50_000,
+  });
+  if (!res.ok) return null;
+  try {
+    const parsed = JSON.parse(res.text) as { access_token?: unknown };
+    return typeof parsed.access_token === "string" && parsed.access_token
+      ? parsed.access_token
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function refreshAcled(ctx: ActionCtx) {
+  const now = Date.now();
+  const provenance = "ACLED Ukraine events (myACLED) · coded political violence";
+  const token = await acledAccessToken();
+  if (!token) {
+    await writeLayer(ctx, {
+      layer: "acled",
+      now,
+      status: "KEY_REQUIRED",
+      records: [],
+      provenance,
+      errorSummary:
+        "Set ACLED_EMAIL + ACLED_PASSWORD (myACLED Research+) or ACLED_ACCESS_TOKEN",
+    });
+    return;
+  }
+  const end = new Date(now).toISOString().slice(0, 10);
+  const start = new Date(now - 14 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  const url =
+    `https://acleddata.com/api/acled/read?_format=json` +
+    `&country=Ukraine&event_date=${start}|${end}&event_date_where=BETWEEN&limit=500`;
+  try {
+    const res = await fetchRaw(url, {
+      timeoutMs: 20_000,
+      maxBytes: 4_000_000,
+      accept: "application/json",
+      authorization: `Bearer ${token}`,
+    });
+    if (!res.ok) {
+      const status = res.status === 401 || res.status === 403 ? "KEY_REQUIRED" : "UNAVAILABLE";
+      await writeLayer(ctx, {
+        layer: "acled",
+        now,
+        status,
+        records: [],
+        provenance,
+        errorSummary: `ACLED HTTP ${res.status}`,
+      });
+      return;
+    }
+    const contacts = parseAcledPayload(JSON.parse(res.text) as unknown);
+    await writeLayer(ctx, {
+      layer: "acled",
+      now,
+      status: contacts.length > 0 ? "LIVE" : "UNAVAILABLE",
+      records: contacts,
+      provenance,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
+    await writeLayer(ctx, {
+      layer: "acled",
+      now,
+      status: "UNAVAILABLE",
+      records: [],
+      provenance,
+      errorSummary: message,
+    });
+  }
+}
+
 async function refreshAdsb(ctx: ActionCtx) {
   const now = Date.now();
   const provenance =
@@ -576,13 +685,14 @@ export const refresh = internalAction({
       v.literal("quakes"),
       v.literal("ais"),
       v.literal("launches"),
+      v.literal("acled"),
       v.literal("all"),
     ),
   },
   handler: async (ctx, args) => {
     const layers: LayerId[] =
       args.layer === "all"
-        ? ["firms", "satellites", "adsb", "quakes", "ais", "launches"]
+        ? ["firms", "satellites", "adsb", "quakes", "ais", "launches", "acled"]
         : [args.layer];
     for (const layer of layers) {
       if (layer === "firms") await refreshFirms(ctx);
@@ -590,7 +700,8 @@ export const refresh = internalAction({
       else if (layer === "adsb") await refreshAdsb(ctx);
       else if (layer === "quakes") await refreshQuakes(ctx);
       else if (layer === "ais") await refreshAis(ctx);
-      else await refreshLaunches(ctx);
+      else if (layer === "launches") await refreshLaunches(ctx);
+      else await refreshAcled(ctx);
     }
     return { ok: true, layer: args.layer };
   },

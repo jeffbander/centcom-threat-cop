@@ -12,6 +12,7 @@ const KIND_TONE: Record<SelectedContact["kind"], string> = {
   quake: "text-[#fb7185]",
   ais: "text-[#22d3ee]",
   launch: "text-[#c4b5fd]",
+  acled: "text-[#ef4444]",
 };
 
 export function NearbyRoster({

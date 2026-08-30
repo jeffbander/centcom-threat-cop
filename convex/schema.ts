@@ -200,6 +200,7 @@ export default defineSchema({
       v.literal("quakes"),
       v.literal("ais"),
       v.literal("launches"),
+      v.literal("acled"),
     ),
     fetchedAt: v.number(),
     status: v.union(

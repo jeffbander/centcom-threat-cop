@@ -16,6 +16,7 @@ export const LAYER_IDS = [
   "quakes",
   "ais",
   "launches",
+  "acled",
 ] as const;
 export type LayerId = (typeof LAYER_IDS)[number];
 
@@ -25,6 +26,7 @@ export const ADSB_STALE_MS = 3 * 60 * 1000;
 export const QUAKES_STALE_MS = 20 * 60 * 1000;
 export const AIS_STALE_MS = 8 * 60 * 1000;
 export const LAUNCHES_STALE_MS = 6 * 60 * 60 * 1000;
+export const ACLED_STALE_MS = 36 * 60 * 60 * 1000;
 
 export const STALE_AFTER_MS: Record<LayerId, number> = {
   firms: FIRMS_STALE_MS,
@@ -33,6 +35,7 @@ export const STALE_AFTER_MS: Record<LayerId, number> = {
   quakes: QUAKES_STALE_MS,
   ais: AIS_STALE_MS,
   launches: LAUNCHES_STALE_MS,
+  acled: ACLED_STALE_MS,
 };
 
 export function isLayerSourceState(value: string): value is LayerSourceState {
@@ -58,6 +61,9 @@ export function resolveLayerSourceState(input: {
   staleAfterMs?: number;
 }): LayerSourceState {
   if (input.layer === "firms" && input.keyInvalid) {
+    return "KEY_REQUIRED";
+  }
+  if (input.layer === "acled" && input.keyPresent === false) {
     return "KEY_REQUIRED";
   }
   if (input.fetchFailed) return "UNAVAILABLE";

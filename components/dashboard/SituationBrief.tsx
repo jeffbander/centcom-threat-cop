@@ -18,6 +18,7 @@ import type { AdsbContact } from "@/convex/lib/adsb";
 import type { QuakeContact } from "@/convex/lib/quakes";
 import type { AisContact } from "@/convex/lib/ais";
 import type { LaunchContact } from "@/convex/lib/launches";
+import type { AcledContact } from "@/convex/lib/acled";
 import {
   geodeticFromSatRecord,
   satelliteContactId,
@@ -52,6 +53,7 @@ export function SituationBrief() {
     layer: "launches",
     now,
   });
+  const acledSnap = useQuery(api.layers.getSnapshot, { layer: "acled", now });
   const events = useQuery(api.events.list, {
     categories: filters.categories,
     severities: filters.severities,
@@ -187,8 +189,25 @@ export function SituationBrief() {
         });
       }
     }
+    const coded = acledSnap?.records;
+    if (Array.isArray(coded)) {
+      for (const raw of coded) {
+        if (!raw || typeof raw !== "object") continue;
+        const a = raw as AcledContact;
+        if (typeof a.id !== "string" || !Number.isFinite(a.latitude)) continue;
+        out.push({
+          layerKey: "acled",
+          id: a.id,
+          latitude: a.latitude,
+          longitude: a.longitude,
+          name: a.location,
+          eventType: a.eventType,
+          fatalities: a.fatalities,
+        });
+      }
+    }
     return out;
-  }, [events, firmsDetections, satSnap, adsbSnap, quakeSnap, aisSnap, launchSnap, now]);
+  }, [events, firmsDetections, satSnap, adsbSnap, quakeSnap, aisSnap, launchSnap, acledSnap, now]);
 
   return (
     <section

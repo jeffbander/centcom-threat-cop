@@ -52,6 +52,20 @@ describe("parseFirmsCsv", () => {
     expect(detections[0].acquiredAt).toBe(Date.parse("2026-08-28T00:39:00Z"));
     expect(Math.abs(detections[0].latitude)).toBeLessThanOrEqual(90);
   });
+
+  it("reserves Ukraine AOR detections even when global FRP is higher", () => {
+    const lines = [
+      "latitude,longitude,frp,acq_date,acq_time,satellite,instrument,confidence",
+    ];
+    for (let i = 0; i < 8; i++) {
+      lines.push(`64.1,112.${i},90.0,2026-08-28,0100,N,VIIRS,high`);
+    }
+    lines.push("50.45,30.52,6.2,2026-08-28,0115,N,VIIRS,nominal");
+    const detections = parseFirmsCsv(lines.join("\n"), 8);
+    expect(detections.some((d) => d.latitude === 50.45 && d.longitude === 30.52)).toBe(
+      true,
+    );
+  });
 });
 
 describe("resolveFirmsSourceState", () => {

@@ -10,6 +10,7 @@ export type OverlayToggles = {
   quakes: boolean;
   ais: boolean;
   launches: boolean;
+  acled: boolean;
   newsWire: boolean;
   aois: boolean;
   rangeRings: boolean;
@@ -61,6 +62,7 @@ export function ShowOverlayControls({
   quakeChip,
   aisChip,
   launchChip,
+  acledChip,
 }: {
   value: OverlayToggles;
   onChange: (next: OverlayToggles) => void;
@@ -70,6 +72,7 @@ export function ShowOverlayControls({
   quakeChip?: LayerChip;
   aisChip?: LayerChip;
   launchChip?: LayerChip;
+  acledChip?: LayerChip;
 }) {
   const items: Array<{ key: keyof OverlayToggles; label: string }> = [
     { key: "firms", label: "FIRMS fires" },
@@ -78,6 +81,7 @@ export function ShowOverlayControls({
     { key: "ais", label: "AIS vessels" },
     { key: "quakes", label: "USGS quakes" },
     { key: "launches", label: "Launches" },
+    { key: "acled", label: "ACLED UA" },
     { key: "milHud", label: "Military HUD" },
     { key: "aois", label: "Theater AOIs" },
     { key: "newsWire", label: "OSINT wire" },
@@ -123,6 +127,9 @@ export function ShowOverlayControls({
           ) : null}
           {item.key === "launches" ? (
             <SourceChip label="LL2" chip={launchChip} />
+          ) : null}
+          {item.key === "acled" ? (
+            <SourceChip label="ACLED" chip={acledChip} />
           ) : null}
         </label>
       ))}

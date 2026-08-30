@@ -25,6 +25,7 @@ const layerArg = v.union(
   v.literal("quakes"),
   v.literal("ais"),
   v.literal("launches"),
+  v.literal("acled"),
 );
 
 export const getSnapshot = query({
@@ -46,6 +47,12 @@ export const getSnapshot = query({
       const keyPresent =
         args.layer === "firms"
           ? Boolean((process.env.FIRMS_MAP_KEY ?? "").trim())
+          : args.layer === "acled"
+            ? Boolean(
+                (process.env.ACLED_ACCESS_TOKEN ?? "").trim() ||
+                  ((process.env.ACLED_EMAIL ?? "").trim() &&
+                    (process.env.ACLED_PASSWORD ?? "").trim()),
+              )
           : true;
       const status = resolveLayerSourceState({
         layer: args.layer,
@@ -71,6 +78,8 @@ export const getSnapshot = query({
                   ? "Open Waters AIS — no snapshot yet"
                   : args.layer === "launches"
                     ? "Launch Library 2 — no snapshot yet"
+                    : args.layer === "acled"
+                      ? "ACLED Ukraine — no snapshot yet"
                     : "CelesTrak GP/OMM — no snapshot yet",
       };
     }
@@ -86,7 +95,13 @@ export const getSnapshot = query({
       keyPresent:
         args.layer === "firms"
           ? Boolean((process.env.FIRMS_MAP_KEY ?? "").trim())
-          : true,
+          : args.layer === "acled"
+            ? Boolean(
+                (process.env.ACLED_ACCESS_TOKEN ?? "").trim() ||
+                  ((process.env.ACLED_EMAIL ?? "").trim() &&
+                    (process.env.ACLED_PASSWORD ?? "").trim()),
+              )
+            : true,
       staleAfterMs: STALE_AFTER_MS[args.layer],
     });
 

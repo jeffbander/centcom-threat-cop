@@ -35,6 +35,8 @@ import type { AdsbContact } from "@/convex/lib/adsb";
 import type { QuakeContact } from "@/convex/lib/quakes";
 import type { AisContact } from "@/convex/lib/ais";
 import type { LaunchContact } from "@/convex/lib/launches";
+import type { AcledContact } from "@/convex/lib/acled";
+import { acledTone } from "@/convex/lib/acled";
 import type { SelectedContact } from "./DashboardContext";
 import type { GroundTrack } from "@/lib/sgp4";
 import { destinationPoint } from "@/lib/spatialJoin";
@@ -676,30 +678,97 @@ function LaunchesLayer({
   );
 }
 
-function FirmsLayer({
-  detections,
+function AcledLayer({
+  contacts,
   selectedId,
   onSelect,
   provenance,
 }: {
-  detections: FirmsDetection[];
+  contacts: AcledContact[];
   selectedId: string | null;
   onSelect: (c: SelectedContact) => void;
   provenance: string;
 }) {
   return (
     <>
+      {contacts.map((e) => {
+        const selected = selectedId === e.id;
+        const fill = acledTone(e.eventType);
+        return (
+          <CircleMarker
+            key={e.id}
+            center={[e.latitude, e.longitude]}
+            radius={selected ? 9 : e.fatalities > 0 ? 7 : 5}
+            pathOptions={{
+              color: selected ? "#e8eef6" : fill,
+              weight: selected ? 2 : 1,
+              fillColor: fill,
+              fillOpacity: 0.75,
+            }}
+            eventHandlers={{
+              click: () =>
+                onSelect({
+                  kind: "acled",
+                  id: e.id,
+                  latitude: e.latitude,
+                  longitude: e.longitude,
+                  title: `${e.eventType} · ${e.location}`,
+                  subtitle: `${e.subEventType || e.eventType} · ACLED`,
+                  details: [
+                    { label: "Date", value: e.eventDate },
+                    { label: "Admin", value: e.admin1 || "—" },
+                    { label: "Actor 1", value: e.actor1 || "—" },
+                    { label: "Actor 2", value: e.actor2 || "—" },
+                    { label: "Killed", value: String(e.fatalities) },
+                    { label: "Notes", value: e.notes || "—" },
+                  ],
+                  provenance,
+                }),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -4]}>
+              <div className="text-xs max-w-[240px]">
+                <div className="font-semibold">{e.eventType}</div>
+                <div className="opacity-80">
+                  {e.location} · {e.eventDate}
+                  {e.fatalities ? ` · ${e.fatalities} killed` : ""}
+                </div>
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
+}
+
+function FirmsLayer({
+  detections,
+  selectedId,
+  onSelect,
+  provenance,
+  highlightIds,
+}: {
+  detections: FirmsDetection[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+  highlightIds?: Set<string>;
+}) {
+  return (
+    <>
       {detections.map((d) => {
         const selected = selectedId === d.id;
+        const hot = highlightIds?.has(d.id) ?? false;
         const fill = d.frp >= 30 ? "#ef4444" : d.frp >= 10 ? "#f97316" : "#fbbf24";
         return (
           <CircleMarker
             key={d.id}
             center={[d.latitude, d.longitude]}
-            radius={selected ? 9 : 5}
+            radius={selected ? 9 : hot ? 8 : 5}
             pathOptions={{
-              color: selected ? "#e8eef6" : "#0b0f14",
-              weight: selected ? 2 : 1,
+              color: selected ? "#e8eef6" : hot ? "#fecaca" : "#0b0f14",
+              weight: selected || hot ? 2 : 1,
               fillColor: fill,
               fillOpacity: 0.9,
             }}
@@ -756,12 +825,15 @@ export default function LeafletMapCanvas({
   showQuakes = true,
   showAis = true,
   showLaunches = true,
+  showAcled = true,
   firmsDetections = [],
   liveSatellites = [],
   adsbContacts = [],
   quakeContacts = [],
   aisContacts = [],
   launchContacts = [],
+  acledContacts = [],
+  firmsHighlightIds,
   selectedContact = null,
   onSelectContact,
   firmsProvenance = "NASA FIRMS",
@@ -770,6 +842,7 @@ export default function LeafletMapCanvas({
   quakeProvenance = "USGS earthquakes",
   aisProvenance = "Open Waters AIS",
   launchProvenance = "Launch Library 2",
+  acledProvenance = "ACLED Ukraine",
   mapFocus = null,
   onCursor,
 }: {
@@ -784,12 +857,15 @@ export default function LeafletMapCanvas({
   showQuakes?: boolean;
   showAis?: boolean;
   showLaunches?: boolean;
+  showAcled?: boolean;
   firmsDetections?: FirmsDetection[];
   liveSatellites?: LiveSatellite[];
   adsbContacts?: AdsbContact[];
   quakeContacts?: QuakeContact[];
   aisContacts?: AisContact[];
   launchContacts?: LaunchContact[];
+  acledContacts?: AcledContact[];
+  firmsHighlightIds?: Set<string>;
   selectedContact?: SelectedContact | null;
   onSelectContact?: (c: SelectedContact) => void;
   firmsProvenance?: string;
@@ -798,6 +874,7 @@ export default function LeafletMapCanvas({
   quakeProvenance?: string;
   aisProvenance?: string;
   launchProvenance?: string;
+  acledProvenance?: string;
   mapFocus?: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
   onCursor?: (lat: number, lon: number) => void;
 }) {
@@ -872,6 +949,7 @@ export default function LeafletMapCanvas({
           selectedId={selectedContact?.kind === "firms" ? selectedContact.id : null}
           onSelect={onSelectContact}
           provenance={firmsProvenance}
+          highlightIds={firmsHighlightIds}
         />
       )}
 
@@ -919,6 +997,15 @@ export default function LeafletMapCanvas({
           selectedId={selectedContact?.kind === "launch" ? selectedContact.id : null}
           onSelect={onSelectContact}
           provenance={launchProvenance}
+        />
+      )}
+
+      {showAcled && onSelectContact && (
+        <AcledLayer
+          contacts={acledContacts}
+          selectedId={selectedContact?.kind === "acled" ? selectedContact.id : null}
+          onSelect={onSelectContact}
+          provenance={acledProvenance}
         />
       )}
 

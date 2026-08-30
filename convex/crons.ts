@@ -41,6 +41,13 @@ crons.interval(
   { layer: "quakes" },
 );
 
+crons.interval(
+  "ACLED Ukraine conflict events",
+  { hours: 6 },
+  internal.providers.fetchLayers.refresh,
+  { layer: "acled" },
+);
+
 // X OSINT polling is intentionally NOT on a Convex cron.
 // It only runs from the logged-in client while the app is open
 // (see components/dashboard/XOsintPoller.tsx — every 30 minutes).

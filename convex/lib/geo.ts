@@ -10,6 +10,23 @@ export type RegionName =
   | "Oceania"
   | "Global";
 
+/** Ukraine AOR box (same extents as lib/theaters). */
+export const UKRAINE_AOR = {
+  minLat: 44,
+  maxLat: 52.5,
+  minLon: 22,
+  maxLon: 40.5,
+} as const;
+
+export function inUkraineAor(lat: number, lon: number): boolean {
+  return (
+    lat >= UKRAINE_AOR.minLat &&
+    lat <= UKRAINE_AOR.maxLat &&
+    lon >= UKRAINE_AOR.minLon &&
+    lon <= UKRAINE_AOR.maxLon
+  );
+}
+
 export function regionFromLatLon(lat: number, lon: number): RegionName {
   // Crude but deterministic operational regions for dashboard filters.
   if (lat < -60) return "Oceania";

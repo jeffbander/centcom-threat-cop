@@ -20,6 +20,8 @@ import type { AdsbContact } from "@/convex/lib/adsb";
 import type { QuakeContact } from "@/convex/lib/quakes";
 import type { AisContact } from "@/convex/lib/ais";
 import type { LaunchContact } from "@/convex/lib/launches";
+import type { AcledContact } from "@/convex/lib/acled";
+import { firmsUkraineDelta } from "@/lib/firmsDelta";
 import type { SelectedContact } from "./DashboardContext";
 import { buildNearbyRoster } from "@/lib/nearby";
 import { NearbyRoster } from "./NearbyRoster";
@@ -55,6 +57,7 @@ export function EventMap({
   showQuakes = true,
   showAis = true,
   showLaunches = true,
+  showAcled = true,
 }: {
   showSatellites?: boolean;
   showAois?: boolean;
@@ -64,6 +67,7 @@ export function EventMap({
   showQuakes?: boolean;
   showAis?: boolean;
   showLaunches?: boolean;
+  showAcled?: boolean;
 }) {
   const {
     filters,
@@ -114,6 +118,10 @@ export function EventMap({
   });
   const launchSnap = useQuery(api.layers.getSnapshot, {
     layer: "launches",
+    now,
+  });
+  const acledSnap = useQuery(api.layers.getSnapshot, {
+    layer: "acled",
     now,
   });
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(
@@ -200,6 +208,25 @@ export function EventMap({
     });
   }, [launchSnap]);
 
+  const acledContacts = useMemo((): AcledContact[] => {
+    const recs = acledSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    return recs.filter((r): r is AcledContact => {
+      if (!r || typeof r !== "object") return false;
+      const a = r as AcledContact;
+      return typeof a.id === "string" && Number.isFinite(a.latitude);
+    });
+  }, [acledSnap]);
+
+  const uaFirmsDelta = useMemo(
+    () => firmsUkraineDelta(firmsDetections, now),
+    [firmsDetections, now],
+  );
+  const firmsHighlightIds = useMemo(
+    () => new Set(uaFirmsDelta.last24.map((d) => d.id)),
+    [uaFirmsDelta],
+  );
+
   const rosterContacts = useMemo((): SelectedContact[] => {
     const out: SelectedContact[] = [];
     for (const a of adsbContacts) {
@@ -250,16 +277,30 @@ export function EventMap({
         provenance: launchSnap?.provenance ?? "",
       });
     }
+    for (const a of acledContacts) {
+      out.push({
+        kind: "acled",
+        id: a.id,
+        latitude: a.latitude,
+        longitude: a.longitude,
+        title: `${a.eventType} · ${a.location}`,
+        subtitle: a.subEventType,
+        details: [],
+        provenance: acledSnap?.provenance ?? "",
+      });
+    }
     return out;
   }, [
     adsbContacts,
     aisContacts,
     quakeContacts,
     launchContacts,
+    acledContacts,
     adsbSnap,
     aisSnap,
     quakeSnap,
     launchSnap,
+    acledSnap,
   ]);
 
   const nearbyItems = useMemo(() => {
@@ -341,6 +382,11 @@ export function EventMap({
               LL2 {launchSnap?.status ?? "…"} {launchContacts.length}
             </span>
           )}
+          {showAcled && (
+            <span className="text-[#ef4444] font-mono text-[10px] uppercase">
+              ACLED {acledSnap?.status ?? "…"} {acledContacts.length}
+            </span>
+          )}
           {cursor && (
             <span className="text-[var(--text-faint)] font-mono text-[10px]">
               {cursor.lat.toFixed(3)}° {cursor.lon.toFixed(3)}°
@@ -414,12 +460,15 @@ export function EventMap({
               showQuakes={showQuakes}
               showAis={showAis}
               showLaunches={showLaunches}
+              showAcled={showAcled}
               firmsDetections={firmsDetections}
               liveSatellites={liveSatellites}
               adsbContacts={adsbContacts}
               quakeContacts={quakeContacts}
               aisContacts={aisContacts}
               launchContacts={launchContacts}
+              acledContacts={acledContacts}
+              firmsHighlightIds={firmsHighlightIds}
               selectedContact={selectedContact}
               onSelectContact={setSelectedContact}
               mapFocus={mapFocus}
@@ -446,7 +495,10 @@ export function EventMap({
               }
               launchProvenance={
                 launchSnap?.provenance ??
-                "Launch Library 2 · upcoming pads, not range safety"
+                "Launch Library 2"
+              }
+              acledProvenance={
+                acledSnap?.provenance ?? "ACLED Ukraine"
               }
             />
           </div>

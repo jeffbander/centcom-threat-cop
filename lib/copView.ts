@@ -7,6 +7,7 @@ export const COP_LAYER_KEYS = [
   "quakes",
   "ais",
   "launches",
+  "acled",
 ] as const;
 
 export type CopLayerKey = (typeof COP_LAYER_KEYS)[number];

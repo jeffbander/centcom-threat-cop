@@ -51,6 +51,7 @@ function DashboardInner() {
     quakes: true,
     ais: true,
     launches: true,
+    acled: true,
     newsWire: false,
     aois: true,
     rangeRings: false,
@@ -75,6 +76,7 @@ function DashboardInner() {
     layer: "launches",
     now,
   });
+  const acledSnap = useQuery(api.layers.getSnapshot, { layer: "acled", now });
   const [rightTab, setRightTab] = useState<"sitrep" | "threat" | "xosint">(
     "sitrep",
   );
@@ -96,6 +98,7 @@ function DashboardInner() {
         quakes: on.has("quakes"),
         ais: on.has("ais"),
         launches: on.has("launches"),
+        acled: on.has("acled"),
       }));
     }
     if (view.ao) {
@@ -186,6 +189,11 @@ function DashboardInner() {
             ? { status: launchSnap.status, count: launchSnap.recordsReceived }
             : undefined
         }
+        acledChip={
+          acledSnap
+            ? { status: acledSnap.status, count: acledSnap.recordsReceived }
+            : undefined
+        }
       />
       <UkraineWatch />
       <div className="flex items-center">
@@ -203,6 +211,7 @@ function DashboardInner() {
                   overlays.quakes && "quakes",
                   overlays.ais && "ais",
                   overlays.launches && "launches",
+                  overlays.acled && "acled",
                 ] as const
               ).filter(Boolean) as CopLayerKey[]
             }
@@ -222,6 +231,7 @@ function DashboardInner() {
             showQuakes={overlays.quakes}
             showAis={overlays.ais}
             showLaunches={overlays.launches}
+            showAcled={overlays.acled}
           />
           <div className="w-full lg:w-[min(36vw,460px)] xl:w-[480px] shrink-0 flex flex-col min-h-0 border-l border-[var(--border)]">
             <ContactSubjectPanel />
