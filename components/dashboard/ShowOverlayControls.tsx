@@ -6,6 +6,7 @@ export type OverlayToggles = {
   forces: boolean;
   satellites: boolean;
   firms: boolean;
+  adsb: boolean;
   newsWire: boolean;
   aois: boolean;
   rangeRings: boolean;
@@ -53,15 +54,18 @@ export function ShowOverlayControls({
   onChange,
   firmsChip,
   satChip,
+  adsbChip,
 }: {
   value: OverlayToggles;
   onChange: (next: OverlayToggles) => void;
   firmsChip?: LayerChip;
   satChip?: LayerChip;
+  adsbChip?: LayerChip;
 }) {
   const items: Array<{ key: keyof OverlayToggles; label: string }> = [
     { key: "firms", label: "FIRMS fires" },
-    { key: "satellites", label: "CelesTrak SGP4" },
+    { key: "satellites", label: "SGP4 sats" },
+    { key: "adsb", label: "ADS-B MIL" },
     { key: "milHud", label: "Military HUD" },
     { key: "forces", label: "BLUFOR / OPFOR" },
     { key: "rangeRings", label: "Range rings" },
@@ -100,10 +104,13 @@ export function ShowOverlayControls({
           {item.key === "satellites" ? (
             <SourceChip label="Sats" chip={satChip} />
           ) : null}
+          {item.key === "adsb" ? (
+            <SourceChip label="ADS-B" chip={adsbChip} />
+          ) : null}
         </label>
       ))}
       <span className="text-[var(--text-faint)] ml-auto max-w-lg text-right text-[10px] font-mono">
-        FIRMS NASA public · sats CelesTrak SGP4 · BLUFOR/OPFOR illustrative
+        FIRMS NASA · SGP4 · ADS-B mil public · BLUFOR/OPFOR illustrative
       </span>
     </div>
   );

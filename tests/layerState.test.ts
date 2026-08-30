@@ -45,6 +45,25 @@ describe("presentLayerSnapshotStatus", () => {
     expect(status).toBe("STALE");
   });
 
+  it("ages ADS-B LIVE to STALE after three minutes", () => {
+    expect(
+      presentLayerSnapshotStatus({
+        layer: "adsb",
+        storedStatus: "LIVE",
+        now,
+        fetchedAt: now - 4 * 60 * 1000,
+      }),
+    ).toBe("STALE");
+    expect(
+      presentLayerSnapshotStatus({
+        layer: "adsb",
+        storedStatus: "LIVE",
+        now,
+        fetchedAt: now - 30_000,
+      }),
+    ).toBe("LIVE");
+  });
+
   it("keeps KEY_REQUIRED and UNAVAILABLE as stored", () => {
     expect(
       presentLayerSnapshotStatus({

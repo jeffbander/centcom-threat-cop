@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -16,12 +16,16 @@ import { formatRelativeTime } from "@/lib/format";
 import { trackProductEvent } from "@/lib/analytics";
 import type { MapEvent } from "./LeafletMapCanvas";
 import type { FirmsDetection } from "@/convex/lib/firms";
+import type { AdsbContact } from "@/convex/lib/adsb";
 import {
   geodeticFromSatRecord,
+  groundTrack,
   satelliteContactId,
   type OmmRecord,
 } from "@/lib/sgp4";
 import type { LiveSatellite } from "./LeafletMapCanvas";
+import { formatDms } from "@/lib/coords";
+import { TrackBoard } from "./TrackBoard";
 
 const LeafletMapCanvas = dynamic(() => import("./LeafletMapCanvas"), {
   ssr: false,
@@ -43,6 +47,7 @@ export function EventMap({
   showRangeRings = true,
   showOsintInfra = true,
   showFirms = true,
+  showAdsb = true,
 }: {
   showForces?: boolean;
   showSatellites?: boolean;
@@ -50,6 +55,7 @@ export function EventMap({
   showRangeRings?: boolean;
   showOsintInfra?: boolean;
   showFirms?: boolean;
+  showAdsb?: boolean;
 }) {
   const {
     filters,
@@ -58,6 +64,7 @@ export function EventMap({
     selectedContact,
     setSelectedContact,
     preferredView,
+    mapFocus,
   } = useDashboard();
   const events = useQuery(api.events.list, {
     categories: filters.categories,
@@ -85,6 +92,16 @@ export function EventMap({
     layer: "satellites",
     now,
   });
+  const adsbSnap = useQuery(api.layers.getSnapshot, {
+    layer: "adsb",
+    now,
+  });
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(
+    null,
+  );
+  const onCursor = useCallback((lat: number, lon: number) => {
+    setCursor({ lat, lon });
+  }, []);
 
   const firmsDetections = useMemo((): FirmsDetection[] => {
     const recs = firmsSnap?.records;
@@ -103,6 +120,7 @@ export function EventMap({
   const liveSatellites = useMemo((): LiveSatellite[] => {
     const recs = satSnap?.records;
     if (!Array.isArray(recs)) return [];
+    const trackEpoch = Math.floor(now / 15_000) * 15_000;
     const out: LiveSatellite[] = [];
     for (const raw of recs) {
       if (!raw || typeof raw !== "object") continue;
@@ -116,10 +134,21 @@ export function EventMap({
         latitude: geo.latitude,
         longitude: geo.longitude,
         altitudeKm: geo.altitudeKm,
+        track: groundTrack(omm, trackEpoch, 90, 90),
       });
     }
     return out;
   }, [satSnap, now]);
+
+  const adsbContacts = useMemo((): AdsbContact[] => {
+    const recs = adsbSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    return recs.filter((r): r is AdsbContact => {
+      if (!r || typeof r !== "object") return false;
+      const a = r as AdsbContact;
+      return typeof a.id === "string" && Number.isFinite(a.latitude);
+    });
+  }, [adsbSnap]);
 
   const rows = (events as EventRow[] | undefined) ?? [];
 
@@ -174,6 +203,16 @@ export function EventMap({
               SGP4 {satSnap?.status ?? "…"}
             </span>
           )}
+          {showAdsb && (
+            <span className="text-[#fbbf24] font-mono text-[10px] uppercase">
+              ADS-B {adsbSnap?.status ?? "…"} {adsbContacts.length}
+            </span>
+          )}
+          {cursor && (
+            <span className="text-[var(--text-faint)] font-mono text-[10px]">
+              {cursor.lat.toFixed(3)}° {cursor.lon.toFixed(3)}°
+            </span>
+          )}
           {showOsintInfra && (
             <span className="text-[var(--ok)] font-mono text-[10px] uppercase">
               OSINT infra
@@ -191,6 +230,34 @@ export function EventMap({
       </div>
 
       <div className="relative flex-1 min-h-[360px] gsm-map-shell">
+        <span className="gsm-map-corner gsm-map-corner-tl" aria-hidden />
+        <span className="gsm-map-corner gsm-map-corner-tr" aria-hidden />
+        <span className="gsm-map-corner gsm-map-corner-bl" aria-hidden />
+        <span className="gsm-map-corner gsm-map-corner-br" aria-hidden />
+        <span className="gsm-map-north" aria-hidden>
+          N
+        </span>
+        {showAdsb && (
+          <TrackBoard
+            contacts={adsbContacts}
+            selectedId={
+              selectedContact?.kind === "adsb" ? selectedContact.id : null
+            }
+            provenance={
+              adsbSnap?.provenance ??
+              "adsb.lol military ADS-B (ODbL) · public transponders"
+            }
+            onSelect={setSelectedContact}
+          />
+        )}
+        {cursor && (
+          <div className="gsm-cursor-readout" aria-live="off">
+            <span className="text-[var(--accent)]">{formatDms(cursor.lat, cursor.lon)}</span>
+            <span className="text-[var(--text-faint)]">
+              {cursor.lat.toFixed(4)} {cursor.lon.toFixed(4)}
+            </span>
+          </div>
+        )}
         {events === undefined ? (
           <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] bg-[#0e1520]">
             Loading map…
@@ -207,10 +274,14 @@ export function EventMap({
               showRangeRings={showRangeRings}
               showOsintInfra={showOsintInfra}
               showFirms={showFirms}
+              showAdsb={showAdsb}
               firmsDetections={firmsDetections}
               liveSatellites={liveSatellites}
+              adsbContacts={adsbContacts}
               selectedContact={selectedContact}
               onSelectContact={setSelectedContact}
+              mapFocus={mapFocus}
+              onCursor={onCursor}
               firmsProvenance={
                 firmsSnap?.provenance ??
                 "NASA FIRMS — public hotspot detections, not events"
@@ -218,6 +289,10 @@ export function EventMap({
               satProvenance={
                 satSnap?.provenance ??
                 "CelesTrak GP/OMM · SGP4 at display time"
+              }
+              adsbProvenance={
+                adsbSnap?.provenance ??
+                "adsb.lol military ADS-B (ODbL) · public transponders"
               }
             />
           </div>

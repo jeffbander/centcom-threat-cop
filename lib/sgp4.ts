@@ -118,6 +118,39 @@ export function geodeticFromOmm(
   }
 }
 
+export type GroundTrack = Array<Array<[number, number]>>;
+
+/**
+ * Forward ground track from `epochMs` for `minutes`, split on the antimeridian.
+ * Time-propagated SGP4 — not a decorative sine wave.
+ */
+export function groundTrack(
+  record: OmmRecord,
+  epochMs: number,
+  minutes = 90,
+  stepSec = 75,
+): GroundTrack {
+  if (!Number.isFinite(epochMs) || minutes <= 0 || stepSec <= 0) return [];
+  const steps = Math.max(2, Math.floor((minutes * 60) / stepSec));
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i <= steps; i++) {
+    const geo = geodeticFromSatRecord(record, epochMs + i * stepSec * 1000);
+    if (!geo) continue;
+    pts.push([geo.latitude, geo.longitude]);
+  }
+  const segs: GroundTrack = [];
+  let cur: Array<[number, number]> = [];
+  for (const p of pts) {
+    if (cur.length > 0 && Math.abs(p[1] - cur[cur.length - 1][1]) > 180) {
+      segs.push(cur);
+      cur = [];
+    }
+    cur.push(p);
+  }
+  if (cur.length >= 2) segs.push(cur);
+  return segs;
+}
+
 /** Propagate a classic two-line element set with SGP4 to `epochMs`. */
 export function geodeticFromTle(
   line1: string,

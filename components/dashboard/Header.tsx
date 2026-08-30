@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { formatUtcClock } from "@/lib/format";
+import { formatZuluDtg } from "@/lib/coords";
 import { useDashboard } from "./DashboardContext";
 import { trackProductEvent } from "@/lib/analytics";
 
@@ -15,12 +15,12 @@ export function Header() {
   const requestRefresh = useMutation(api.ingestion.requestRefresh);
   const requestLayerRefresh = useMutation(api.layers.requestRefresh);
   const track = useMutation(api.analytics.track);
-  const [clock, setClock] = useState(() => formatUtcClock());
+  const [clock, setClock] = useState(() => formatZuluDtg());
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => setClock(formatUtcClock()), 1000);
+    const id = setInterval(() => setClock(formatZuluDtg()), 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -56,15 +56,24 @@ export function Header() {
         >
           CENTCOM · Threat COP
         </Link>
-        <span className="hidden sm:inline text-[10px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)]">
-          Military UX
+        <span className="hidden sm:inline text-[10px] uppercase tracking-[0.14em] font-mono text-[var(--ok)]">
+          U//FOUO
         </span>
       </div>
 
       <div className="flex items-center gap-3 text-xs font-mono text-[var(--text-muted)] ml-auto sm:ml-4">
-        <time dateTime={new Date().toISOString()} aria-live="polite">
+        <time
+          dateTime={new Date().toISOString()}
+          aria-live="polite"
+          className="text-[var(--accent)]"
+          title="Zulu / UTC"
+        >
+          <span className="text-[var(--text-faint)] mr-1">ZULU</span>
           {clock}
         </time>
+        <span className="hidden md:inline text-[var(--text-faint)]">
+          LINK UP · AUTH VALID
+        </span>
         <span
           className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border ${
             freshness?.isStale

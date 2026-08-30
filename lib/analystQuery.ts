@@ -5,11 +5,16 @@
 
 import { haversineKm, type LatLon } from "./spatialJoin";
 
-export const ANALYST_LAYERS = ["events", "firms", "satellites"] as const;
+export const ANALYST_LAYERS = [
+  "events",
+  "firms",
+  "satellites",
+  "adsb",
+] as const;
 export type AnalystLayerKey = (typeof ANALYST_LAYERS)[number];
 
 export const LOADED_DATA_COVERAGE_NOTE =
-  "loaded-data-only — answers cover currently loaded events, FIRMS, and satellite records, not global completeness";
+  "loaded-data-only — answers cover currently loaded events, FIRMS, satellite, and ADS-B records, not global completeness";
 
 export type AnalystRecord = {
   layerKey: AnalystLayerKey;

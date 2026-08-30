@@ -193,7 +193,11 @@ export default defineSchema({
    * Contacts — not events. One current row per layer; refresh replaces.
    */
   layerSnapshots: defineTable({
-    layer: v.union(v.literal("firms"), v.literal("satellites")),
+    layer: v.union(
+      v.literal("firms"),
+      v.literal("satellites"),
+      v.literal("adsb"),
+    ),
     fetchedAt: v.number(),
     status: v.union(
       v.literal("LIVE"),

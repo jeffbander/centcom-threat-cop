@@ -14,6 +14,7 @@ import { formatRelativeTime } from "@/lib/format";
 import { useDashboard } from "./DashboardContext";
 import { FIRMS_NEAR_EVENT_KM, firmsNearEvent } from "@/lib/spatialJoin";
 import type { FirmsDetection } from "@/convex/lib/firms";
+import type { AdsbContact } from "@/convex/lib/adsb";
 import {
   geodeticFromSatRecord,
   satelliteContactId,
@@ -41,6 +42,7 @@ export function SituationBrief() {
     layer: "satellites",
     now,
   });
+  const adsbSnap = useQuery(api.layers.getSnapshot, { layer: "adsb", now });
   const events = useQuery(api.events.list, {
     categories: filters.categories,
     severities: filters.severities,
@@ -111,8 +113,26 @@ export function SituationBrief() {
         });
       }
     }
+    const air = adsbSnap?.records;
+    if (Array.isArray(air)) {
+      for (const raw of air) {
+        if (!raw || typeof raw !== "object") continue;
+        const a = raw as AdsbContact;
+        if (typeof a.id !== "string" || !Number.isFinite(a.latitude)) continue;
+        out.push({
+          layerKey: "adsb",
+          id: a.id,
+          latitude: a.latitude,
+          longitude: a.longitude,
+          name: a.callsign,
+          callsign: a.callsign,
+          military: a.military,
+          altitudeFt: a.altitudeFt ?? undefined,
+        });
+      }
+    }
     return out;
-  }, [events, firmsDetections, satSnap, now]);
+  }, [events, firmsDetections, satSnap, adsbSnap, now]);
 
   return (
     <section

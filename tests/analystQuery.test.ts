@@ -36,6 +36,16 @@ const records: AnalystRecord[] = [
     name: "ISS (ZARYA)",
     norad: "25544",
   },
+  {
+    layerKey: "adsb",
+    id: "adsb:ae54c2",
+    latitude: 33.43,
+    longitude: 44.4,
+    name: "RCH123",
+    callsign: "RCH123",
+    military: true,
+    altitudeFt: 24000,
+  },
 ];
 
 describe("runAnalystQuery", () => {
@@ -57,6 +67,16 @@ describe("runAnalystQuery", () => {
     expect(result.count).toBe(1);
     expect(result.items[0].id).toBe("sat:25544");
     expect(result.coverageNote).toContain("loaded-data-only");
+  });
+
+  it("filters military ADS-B from loaded tracks", () => {
+    const result = runAnalystQuery(records, {
+      layers: ["adsb"],
+      filters: [{ field: "military", op: "eq", value: true }],
+    });
+    expect(result.ok).toBe(true);
+    expect(result.count).toBe(1);
+    expect(result.items[0].id).toBe("adsb:ae54c2");
   });
 });
 

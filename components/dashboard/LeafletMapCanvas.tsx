@@ -5,7 +5,7 @@
  * FIRMS + CelesTrak SGP4 are live contacts. Force markers stay illustrative.
  */
 
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -16,7 +16,9 @@ import {
   Polyline,
   Polygon,
   Marker,
+  ScaleControl,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
@@ -37,7 +39,10 @@ import {
   type UnitKind,
 } from "@/lib/showOverlays";
 import type { FirmsDetection } from "@/convex/lib/firms";
+import type { AdsbContact } from "@/convex/lib/adsb";
 import type { SelectedContact } from "./DashboardContext";
+import type { GroundTrack } from "@/lib/sgp4";
+import { destinationPoint } from "@/lib/spatialJoin";
 import {
   OSINT_CABLES,
   OSINT_KIND_COLOR,
@@ -195,16 +200,36 @@ export type LiveSatellite = {
   latitude: number;
   longitude: number;
   altitudeKm: number;
+  track?: GroundTrack;
 };
+
+function CursorHud({
+  onCursor,
+}: {
+  onCursor: (lat: number, lon: number) => void;
+}) {
+  const last = useRef(0);
+  useMapEvents({
+    mousemove(e) {
+      const t = performance.now();
+      if (t - last.current < 80) return;
+      last.current = t;
+      onCursor(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 
 function FitOrFocus({
   events,
   selectedId,
   selectedContact,
+  mapFocus,
 }: {
   events: MapEvent[];
   selectedId: Id<"events"> | null;
   selectedContact: SelectedContact | null;
+  mapFocus: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
 }) {
   const map = useMap();
 
@@ -233,7 +258,38 @@ function FitOrFocus({
     map.setView([28, 40], 3);
   }, [map]);
 
+  useEffect(() => {
+    if (!mapFocus) return;
+    map.flyTo([mapFocus.latitude, mapFocus.longitude], mapFocus.zoom, {
+      duration: 0.7,
+    });
+  }, [mapFocus, map]);
+
   return null;
+}
+
+function aircraftIcon(
+  trackDeg: number | null,
+  military: boolean,
+  callsign: string,
+  selected: boolean,
+) {
+  const color = military ? "#fbbf24" : "#38bdf8";
+  const rot = trackDeg ?? 0;
+  const safe = callsign.replace(/"/g, "");
+  return L.divIcon({
+    className: "gsm-adsb-icon",
+    html: `<div style="transform:rotate(${rot}deg);width:16px;height:16px">
+      <div title="${safe}" style="
+        width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+        border-bottom:14px solid ${selected ? "#e8eef6" : color};
+        filter:drop-shadow(0 0 4px ${color});
+        margin-left:3px;
+      "></div>
+    </div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
 }
 
 function LiveSatelliteLayer({
@@ -253,6 +309,21 @@ function LiveSatelliteLayer({
       {satellites.map((sat) => {
         const selected = selectedId === sat.id;
         return (
+          <Fragment key={sat.id}>
+          {(sat.track ?? []).map((seg, i) =>
+            seg.length >= 2 ? (
+              <Polyline
+                key={`${sat.id}-trk-${i}`}
+                positions={seg}
+                pathOptions={{
+                  color,
+                  weight: selected ? 2 : 1,
+                  opacity: selected ? 0.85 : 0.4,
+                  dashArray: "4 6",
+                }}
+              />
+            ) : null,
+          )}
           <Marker
             key={sat.id}
             position={[sat.latitude, sat.longitude]}
@@ -301,6 +372,98 @@ function LiveSatelliteLayer({
               </div>
             </Tooltip>
           </Marker>
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+function AdsbLayer({
+  contacts,
+  selectedId,
+  onSelect,
+  provenance,
+}: {
+  contacts: AdsbContact[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+}) {
+  return (
+    <>
+      {contacts.map((ac) => {
+        const selected = selectedId === ac.id;
+        const tick =
+          ac.trackDeg != null
+            ? destinationPoint(ac, ac.trackDeg, selected ? 40 : 22)
+            : null;
+        const color = ac.military ? "#fbbf24" : "#38bdf8";
+        return (
+          <Fragment key={ac.id}>
+          {tick ? (
+            <Polyline
+              positions={[
+                [ac.latitude, ac.longitude],
+                [tick.latitude, tick.longitude],
+              ]}
+              pathOptions={{
+                color,
+                weight: selected ? 2 : 1,
+                opacity: selected ? 0.9 : 0.55,
+              }}
+            />
+          ) : null}
+          <Marker
+            position={[ac.latitude, ac.longitude]}
+            icon={aircraftIcon(ac.trackDeg, ac.military, ac.callsign, selected)}
+            zIndexOffset={selected ? 950 : 700}
+            eventHandlers={{
+              click: () =>
+                onSelect({
+                  kind: "adsb",
+                  id: ac.id,
+                  latitude: ac.latitude,
+                  longitude: ac.longitude,
+                  title: ac.callsign,
+                  subtitle: `${ac.military ? "MIL" : "CIV"} · ${ac.typeCode || "type?"} · ADS-B`,
+                  details: [
+                    { label: "ICAO", value: ac.hex.toUpperCase() },
+                    { label: "Reg", value: ac.registration || "—" },
+                    { label: "Type", value: ac.typeCode || "—" },
+                    {
+                      label: "Alt",
+                      value:
+                        ac.altitudeFt != null ? `${Math.round(ac.altitudeFt)} ft` : "—",
+                    },
+                    {
+                      label: "GS",
+                      value:
+                        ac.groundSpeedKt != null
+                          ? `${Math.round(ac.groundSpeedKt)} kt`
+                          : "—",
+                    },
+                    {
+                      label: "Trk",
+                      value:
+                        ac.trackDeg != null ? `${Math.round(ac.trackDeg)}°` : "—",
+                    },
+                  ],
+                  provenance,
+                }),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -8]}>
+              <div className="text-xs">
+                <div className="font-bold">{ac.callsign}</div>
+                <div className="opacity-80">
+                  {ac.military ? "MIL" : "CIV"} · {ac.typeCode || "?"} ·{" "}
+                  {ac.altitudeFt != null ? `${Math.round(ac.altitudeFt)} ft` : "alt?"}
+                </div>
+              </div>
+            </Tooltip>
+          </Marker>
+          </Fragment>
         );
       })}
     </>
@@ -385,12 +548,17 @@ export default function LeafletMapCanvas({
   showRangeRings = true,
   showOsintInfra = true,
   showFirms = true,
+  showAdsb = true,
   firmsDetections = [],
   liveSatellites = [],
+  adsbContacts = [],
   selectedContact = null,
   onSelectContact,
   firmsProvenance = "NASA FIRMS",
   satProvenance = "CelesTrak GP · SGP4",
+  adsbProvenance = "adsb.lol military ADS-B",
+  mapFocus = null,
+  onCursor,
 }: {
   events: MapEvent[];
   selectedEventId: Id<"events"> | null;
@@ -401,12 +569,17 @@ export default function LeafletMapCanvas({
   showRangeRings?: boolean;
   showOsintInfra?: boolean;
   showFirms?: boolean;
+  showAdsb?: boolean;
   firmsDetections?: FirmsDetection[];
   liveSatellites?: LiveSatellite[];
+  adsbContacts?: AdsbContact[];
   selectedContact?: SelectedContact | null;
   onSelectContact?: (c: SelectedContact) => void;
   firmsProvenance?: string;
   satProvenance?: string;
+  adsbProvenance?: string;
+  mapFocus?: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
+  onCursor?: (lat: number, lon: number) => void;
 }) {
   const validEvents = useMemo(
     () =>
@@ -441,7 +614,10 @@ export default function LeafletMapCanvas({
         events={validEvents}
         selectedId={selectedEventId}
         selectedContact={selectedContact}
+        mapFocus={mapFocus}
       />
+      {onCursor ? <CursorHud onCursor={onCursor} /> : null}
+      <ScaleControl position="bottomleft" imperial={false} maxWidth={120} />
 
       {/* Theater AOIs */}
       {showAois &&
@@ -487,6 +663,31 @@ export default function LeafletMapCanvas({
           provenance={satProvenance}
         />
       )}
+
+      {showAdsb && onSelectContact && (
+        <AdsbLayer
+          contacts={adsbContacts}
+          selectedId={selectedContact?.kind === "adsb" ? selectedContact.id : null}
+          onSelect={onSelectContact}
+          provenance={adsbProvenance}
+        />
+      )}
+
+      {selectedContact &&
+        [50_000, 150_000].map((meters) => (
+          <Circle
+            key={`ring-${meters}`}
+            center={[selectedContact.latitude, selectedContact.longitude]}
+            radius={meters}
+            pathOptions={{
+              color: "#e8eef6",
+              weight: meters === 50_000 ? 1.25 : 1,
+              dashArray: meters === 50_000 ? "2 6" : "1 8",
+              fillOpacity: meters === 50_000 ? 0.03 : 0,
+              opacity: meters === 50_000 ? 0.85 : 0.4,
+            }}
+          />
+        ))}
 
       {showOsintInfra && <OsintInfraLayer />}
 

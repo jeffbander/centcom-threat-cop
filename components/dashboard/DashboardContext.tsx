@@ -12,7 +12,7 @@ import type { Category, PreferredView, Severity, TimeWindow } from "@/lib/consta
 import type { Id } from "@/convex/_generated/dataModel";
 
 export type SelectedContact = {
-  kind: "firms" | "satellite";
+  kind: "firms" | "satellite" | "adsb";
   id: string;
   latitude: number;
   longitude: number;
@@ -39,6 +39,8 @@ export type DashboardContextValue = {
   setSelectedEventId: (id: Id<"events"> | null) => void;
   selectedContact: SelectedContact | null;
   setSelectedContact: (contact: SelectedContact | null) => void;
+  mapFocus: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
+  requestMapFocus: (latitude: number, longitude: number, zoom: number) => void;
   preferredView: PreferredView;
   setPreferredView: (v: PreferredView) => void;
   detailOpen: boolean;
@@ -76,6 +78,12 @@ export function DashboardProvider({
     initial?.preferredView ?? "split",
   );
   const [detailOpen, setDetailOpen] = useState(false);
+  const [mapFocus, setMapFocus] = useState<{
+    latitude: number;
+    longitude: number;
+    zoom: number;
+    nonce: number;
+  } | null>(null);
 
   const setFilters = useCallback((patch: Partial<FilterState>) => {
     setFiltersState((prev) => ({ ...prev, ...patch }));
@@ -104,6 +112,10 @@ export function DashboardProvider({
           setDetailOpen(false);
         }
       },
+      mapFocus,
+      requestMapFocus: (latitude: number, longitude: number, zoom: number) => {
+        setMapFocus({ latitude, longitude, zoom, nonce: Date.now() });
+      },
       preferredView,
       setPreferredView,
       detailOpen,
@@ -115,6 +127,7 @@ export function DashboardProvider({
       resetFilters,
       selectedEventId,
       selectedContact,
+      mapFocus,
       preferredView,
       detailOpen,
     ],

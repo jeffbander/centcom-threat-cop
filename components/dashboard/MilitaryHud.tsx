@@ -1,56 +1,80 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  ILLUSTRATIVE_SATELLITES,
-  ILLUSTRATIVE_UNITS,
-  SAT_KIND_COLOR,
-  THEATER_AOIS,
-  type SatKind,
-} from "@/lib/showOverlays";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { threatCondition } from "@/lib/theaters";
+import { useDashboard } from "./DashboardContext";
 
 /**
- * Compact military HUD — kept short so Operational Briefing has room.
+ * Live tactical HUD — counts from COP events + overlay snapshots.
  */
-export function MilitaryHud() {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
+export function MilitaryHud({
+  firmsCount,
+  satCount,
+  adsbCount,
+  firmsStatus,
+  satStatus,
+  adsbStatus,
+}: {
+  firmsCount: number;
+  satCount: number;
+  adsbCount: number;
+  firmsStatus: string;
+  satStatus: string;
+  adsbStatus: string;
+}) {
+  const { filters, selectedContact, selectedEventId } = useDashboard();
+  const overview = useQuery(api.events.overview, {
+    categories: filters.categories,
+    severities: filters.severities,
+    regions: filters.regions,
+    timeWindow: filters.timeWindow,
+    bookmarkedOnly: filters.bookmarkedOnly,
+    search: filters.search || undefined,
+  });
 
-  const blue = ILLUSTRATIVE_UNITS.filter((u) => u.side === "blue").length;
-  const red = ILLUSTRATIVE_UNITS.filter((u) => u.side === "red").length;
-  const satsByKind = ILLUSTRATIVE_SATELLITES.reduce(
-    (acc, s) => {
-      acc[s.kind] = (acc[s.kind] ?? 0) + 1;
-      return acc;
-    },
-    {} as Partial<Record<SatKind, number>>,
-  );
-  const orbitPhase = tick % 60;
+  const critical = overview?.criticalCount ?? 0;
+  const high = overview?.highCount ?? 0;
+  const tc = threatCondition(critical, high);
+  const tcColor =
+    tc.code === "TC-RED"
+      ? "text-[var(--critical)]"
+      : tc.code === "TC-ORANGE"
+        ? "text-[var(--high)]"
+        : tc.code === "TC-YELLOW"
+          ? "text-[var(--moderate)]"
+          : "text-[var(--ok)]";
+
+  const subject = selectedContact
+    ? selectedContact.kind.toUpperCase()
+    : selectedEventId
+      ? "EVENT"
+      : "NONE";
 
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1 border-b border-[var(--border)] bg-[#080c12] text-[10px] font-mono">
       <span className="inline-flex items-center gap-1.5">
-        <span className="gsm-pulse-dot bg-[var(--critical)] !w-1.5 !h-1.5" />
-        <span className="text-[var(--critical)] font-bold tracking-wide">
-          TC-ORANGE
-        </span>
-        <span className="text-[var(--text-faint)]">sensitive</span>
+        <span
+          className={`gsm-pulse-dot !w-1.5 !h-1.5 ${
+            tc.code === "TC-GREEN" ? "bg-[var(--ok)]" : "bg-[var(--critical)]"
+          }`}
+        />
+        <span className={`font-bold tracking-wide ${tcColor}`}>{tc.code}</span>
+        <span className="text-[var(--text-faint)]">{tc.label}</span>
       </span>
-      <span className="text-[var(--accent)]">BLU {blue}</span>
-      <span className="text-[var(--critical)]">OPF {red}</span>
-      <span className="text-[var(--text-faint)] hidden sm:inline">
-        {THEATER_AOIS.map((ao) => ao.name.replace("AO ", "")).join(" · ")}
+      <span className="text-[var(--critical)]">CRIT {critical}</span>
+      <span className="text-[var(--high)]">HIGH {high}</span>
+      <span className="text-[#f97316]" title={firmsStatus}>
+        FIRMS {firmsCount}
       </span>
-      <span className="ml-auto flex flex-wrap gap-1.5 text-[var(--text-faint)]">
-        {(Object.keys(satsByKind) as SatKind[]).map((k) => (
-          <span key={k} style={{ color: SAT_KIND_COLOR[k] }}>
-            {k}:{satsByKind[k]}
-          </span>
-        ))}
-        <span className="text-[var(--demo)]">φ{orbitPhase}s</span>
+      <span className="text-[var(--demo)]" title={satStatus}>
+        SAT {satCount}
+      </span>
+      <span className="text-[#fbbf24]" title={adsbStatus}>
+        ADS-B MIL {adsbCount}
+      </span>
+      <span className="text-[var(--text-faint)] ml-auto">
+        SUBJECT {subject}
       </span>
     </div>
   );

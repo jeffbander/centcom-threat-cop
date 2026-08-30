@@ -18,7 +18,11 @@ import {
 const RATE_LIMIT_MS = 45_000;
 const lastLayerRefreshByUser = new Map<string, number>();
 
-const layerArg = v.union(v.literal("firms"), v.literal("satellites"));
+const layerArg = v.union(
+  v.literal("firms"),
+  v.literal("satellites"),
+  v.literal("adsb"),
+);
 
 export const getSnapshot = query({
   args: {
@@ -56,7 +60,9 @@ export const getSnapshot = query({
         provenance:
           args.layer === "firms"
             ? "NASA FIRMS VIIRS NRT — no snapshot yet"
-            : "CelesTrak GP/OMM — no snapshot yet",
+            : args.layer === "adsb"
+              ? "adsb.lol military ADS-B — no snapshot yet"
+              : "CelesTrak GP/OMM — no snapshot yet",
       };
     }
 

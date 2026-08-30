@@ -15,6 +15,7 @@ import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as ingestion from "../ingestion.js";
 import type * as layers from "../layers.js";
+import type * as lib_adsb from "../lib/adsb.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_briefing from "../lib/briefing.js";
 import type * as lib_constants from "../lib/constants.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   events: typeof events;
   ingestion: typeof ingestion;
   layers: typeof layers;
+  "lib/adsb": typeof lib_adsb;
   "lib/auth": typeof lib_auth;
   "lib/briefing": typeof lib_briefing;
   "lib/constants": typeof lib_constants;

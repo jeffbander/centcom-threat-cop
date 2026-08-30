@@ -21,6 +21,9 @@ import { SatelliteLinkStatus } from "./SatelliteLinkStatus";
 import { EventDetailPanel } from "./EventDetailPanel";
 import { NewsTicker } from "./NewsTicker";
 import { MilitaryHud } from "./MilitaryHud";
+import { TheaterMissions } from "./TheaterMissions";
+import { ClassificationStrip } from "./ClassificationStrip";
+import { CopHotkeys } from "./CopHotkeys";
 import {
   ShowOverlayControls,
   type OverlayToggles,
@@ -39,11 +42,11 @@ function DashboardInner() {
     forces: true,
     satellites: true,
     firms: true,
-    // Default off so Operational Briefing has vertical room
+    adsb: true,
     newsWire: false,
     aois: true,
     rangeRings: false,
-    milHud: false,
+    milHud: true,
     xOsint: true,
     osintInfra: true,
   });
@@ -57,6 +60,7 @@ function DashboardInner() {
     layer: "satellites",
     now,
   });
+  const adsbSnap = useQuery(api.layers.getSnapshot, { layer: "adsb", now });
   const [rightTab, setRightTab] = useState<"sitrep" | "threat" | "xosint">(
     "sitrep",
   );
@@ -82,8 +86,21 @@ function DashboardInner() {
       {/* X polls only while this authenticated dashboard is mounted */}
       <XOsintPoller enabled={overlays.xOsint} />
       <LayerPoller />
+      <CopHotkeys />
+      <ClassificationStrip position="top" />
       <Header />
-      <OverviewBar />
+      {overlays.milHud ? (
+        <MilitaryHud
+          firmsCount={firmsSnap?.recordsReceived ?? 0}
+          satCount={satSnap?.recordsReceived ?? 0}
+          adsbCount={adsbSnap?.recordsReceived ?? 0}
+          firmsStatus={firmsSnap?.status ?? "…"}
+          satStatus={satSnap?.status ?? "…"}
+          adsbStatus={adsbSnap?.status ?? "…"}
+        />
+      ) : (
+        <OverviewBar />
+      )}
       <ShowOverlayControls
         value={overlays}
         onChange={setOverlays}
@@ -100,8 +117,13 @@ function DashboardInner() {
             ? { status: satSnap.status, count: satSnap.recordsReceived }
             : undefined
         }
+        adsbChip={
+          adsbSnap
+            ? { status: adsbSnap.status, count: adsbSnap.recordsReceived }
+            : undefined
+        }
       />
-      {overlays.milHud && <MilitaryHud />}
+      <TheaterMissions />
       {overlays.newsWire && <NewsTicker />}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         <FilterRail />
@@ -113,6 +135,7 @@ function DashboardInner() {
             showRangeRings={overlays.rangeRings}
             showOsintInfra={overlays.osintInfra}
             showFirms={overlays.firms}
+            showAdsb={overlays.adsb}
           />
           <div className="w-full lg:w-[min(36vw,460px)] xl:w-[480px] shrink-0 flex flex-col min-h-0 border-l border-[var(--border)]">
             <ContactSubjectPanel />
@@ -180,6 +203,7 @@ function DashboardInner() {
         </div>
       </div>
       <EventDetailPanel />
+      <ClassificationStrip position="bottom" />
     </div>
   );
 }

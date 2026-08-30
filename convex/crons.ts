@@ -11,12 +11,20 @@ crons.interval(
   { clearSynthetic: true },
 );
 
-/** FIRMS + CelesTrak GP snapshots — contacts, not events. */
+/** FIRMS + TLE snapshots — contacts, not events. */
 crons.interval(
   "live overlay layer snapshots",
   { minutes: 30 },
   internal.providers.fetchLayers.refresh,
   { layer: "all" },
+);
+
+/** Military ADS-B refreshes faster than fires/TLEs. */
+crons.interval(
+  "military ADS-B overlay",
+  { minutes: 2 },
+  internal.providers.fetchLayers.refresh,
+  { layer: "adsb" },
 );
 
 // X OSINT polling is intentionally NOT on a Convex cron.

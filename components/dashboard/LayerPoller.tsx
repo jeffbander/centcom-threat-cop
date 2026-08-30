@@ -17,5 +17,14 @@ export function LayerPoller() {
     });
   }, [refresh]);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      void refresh({ layer: "adsb" }).catch(() => {
+        /* rate-limit is fine — cron still refreshes */
+      });
+    }, 90_000);
+    return () => clearInterval(id);
+  }, [refresh]);
+
   return null;
 }

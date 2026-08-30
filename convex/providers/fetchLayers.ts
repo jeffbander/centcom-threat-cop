@@ -11,6 +11,7 @@ import {
   parseFirmsCsv,
   resolveFirmsSourceState,
 } from "../lib/firms";
+import { parseAdsbLol } from "../lib/adsb";
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
 const FETCH_TIMEOUT_MS = 8_000;
@@ -362,20 +363,67 @@ async function refreshSatellites(ctx: ActionCtx) {
   });
 }
 
+async function refreshAdsb(ctx: ActionCtx) {
+  const now = Date.now();
+  const provenance =
+    "adsb.lol military ADS-B (ODbL) · public transponders, not targeting data";
+  try {
+    const res = await fetchRaw("https://api.adsb.lol/v2/mil", {
+      timeoutMs: 15_000,
+      maxBytes: 4_000_000,
+      accept: "application/json",
+    });
+    if (!res.ok) {
+      await ctx.runMutation(internal.layers.replaceSnapshot, {
+        layer: "adsb",
+        fetchedAt: now,
+        status: "UNAVAILABLE",
+        recordsJson: "[]",
+        recordsReceived: 0,
+        errorSummary: `adsb.lol HTTP ${res.status}`,
+        provenance,
+      });
+      return;
+    }
+    const contacts = parseAdsbLol(JSON.parse(res.text) as unknown);
+    await ctx.runMutation(internal.layers.replaceSnapshot, {
+      layer: "adsb",
+      fetchedAt: now,
+      status: contacts.length > 0 ? "LIVE" : "UNAVAILABLE",
+      recordsJson: JSON.stringify(contacts),
+      recordsReceived: contacts.length,
+      provenance,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
+    await ctx.runMutation(internal.layers.replaceSnapshot, {
+      layer: "adsb",
+      fetchedAt: now,
+      status: "UNAVAILABLE",
+      recordsJson: "[]",
+      recordsReceived: 0,
+      errorSummary: message,
+      provenance,
+    });
+  }
+}
+
 export const refresh = internalAction({
   args: {
     layer: v.union(
       v.literal("firms"),
       v.literal("satellites"),
+      v.literal("adsb"),
       v.literal("all"),
     ),
   },
   handler: async (ctx, args) => {
     const layers: LayerId[] =
-      args.layer === "all" ? ["firms", "satellites"] : [args.layer];
+      args.layer === "all" ? ["firms", "satellites", "adsb"] : [args.layer];
     for (const layer of layers) {
       if (layer === "firms") await refreshFirms(ctx);
-      else await refreshSatellites(ctx);
+      else if (layer === "satellites") await refreshSatellites(ctx);
+      else await refreshAdsb(ctx);
     }
     return { ok: true, layer: args.layer };
   },

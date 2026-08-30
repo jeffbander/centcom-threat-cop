@@ -5,6 +5,7 @@ import {
   geodeticFromOmm,
   geodeticFromSatRecord,
   geodeticFromTle,
+  groundTrack,
   type OmmRecord,
 } from "@/lib/sgp4";
 
@@ -54,6 +55,29 @@ describe("geodeticFromTle (SGP4)", () => {
     expect(a!.longitude).toBeLessThanOrEqual(180);
     expect(
       Math.abs(a!.latitude - b!.latitude) + Math.abs(a!.longitude - b!.longitude),
+    ).toBeGreaterThan(0.5);
+  });
+
+  it("builds a time-propagated ground track (not a decorative loop)", () => {
+    const rec: OmmRecord = {
+      OBJECT_NAME: "ISS (ZARYA)",
+      NORAD_CAT_ID: 25544,
+      TLE_LINE1: line1,
+      TLE_LINE2: line2,
+    };
+    const segs = groundTrack(rec, T0, 40, 120);
+    const pts = segs.flat();
+    expect(pts.length).toBeGreaterThan(8);
+    for (const [lat, lon] of pts) {
+      expect(lat).toBeGreaterThanOrEqual(-90);
+      expect(lat).toBeLessThanOrEqual(90);
+      expect(lon).toBeGreaterThanOrEqual(-180);
+      expect(lon).toBeLessThanOrEqual(180);
+    }
+    const first = pts[0];
+    const later = pts[Math.min(6, pts.length - 1)];
+    expect(
+      Math.abs(first[0] - later[0]) + Math.abs(first[1] - later[1]),
     ).toBeGreaterThan(0.5);
   });
 

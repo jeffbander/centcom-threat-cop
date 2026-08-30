@@ -41,6 +41,9 @@ export function FilterRail() {
         <p className="text-[9px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)]">
           Filters
         </p>
+        <p className="mt-1 text-[9px] font-mono text-[var(--text-faint)] leading-snug">
+          Keys 1–5 theaters · 0 world · Esc clear
+        </p>
       </div>
       <div>
         <h2 className="text-[11px] uppercase tracking-[0.16em] font-mono text-[var(--accent)] mb-2">
