@@ -424,9 +424,6 @@ export function SituationBrief() {
 
             <p className="text-[10px] leading-relaxed text-[var(--text-faint)] border-t border-[var(--border)] pt-2">
               {brief.disclosure}
-              {brief.demoDataActive
-                ? " Demo/synthetic rows are still present."
-                : ""}
             </p>
           </div>
         )}

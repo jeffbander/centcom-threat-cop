@@ -84,30 +84,20 @@ export function EventDetailPanel() {
               >
                 {SEVERITY_THREAT_LABELS[detail.severity as Severity]}
               </span>
-              {!detail.isSynthetic && (
-                <span className="px-2 py-0.5 rounded border border-[var(--ok)] text-[var(--ok)]">
-                  Open-source
-                </span>
-              )}
+              <span className="px-2 py-0.5 rounded border border-[var(--ok)] text-[var(--ok)]">
+                Open-source
+              </span>
               <span className="px-2 py-0.5 rounded border border-[var(--border)]">
                 Confidence: {detail.confidence}
               </span>
-              {detail.isSynthetic && (
-                <span className="px-2 py-0.5 rounded border border-[var(--demo)] bg-[var(--demo-wash)] text-[var(--demo)] font-semibold">
-                  Sensitive
-                </span>
-              )}
             </div>
 
             <section>
               <h3 className="text-[11px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)] mb-1">
-                System-generated summary
+                Summary
               </h3>
               <p className="text-sm text-[var(--text)] whitespace-pre-wrap">
                 {detail.summary}
-              </p>
-              <p className="mt-2 text-xs text-[var(--demo)] border border-[var(--demo)] bg-[var(--demo-wash)] rounded px-2 py-1.5">
-                {detail.generatedContentDisclosure}
               </p>
             </section>
 

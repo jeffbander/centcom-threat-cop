@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { THEATER_MISSIONS, threatCondition } from "@/lib/theaters";
+import {
+  THEATER_MISSIONS,
+  inUkraineAor,
+  looksUkraineRelated,
+  threatCondition,
+} from "@/lib/theaters";
 
 describe("THEATER_MISSIONS", () => {
   it("has in-range jump targets for each AOI", () => {
@@ -10,6 +15,20 @@ describe("THEATER_MISSIONS", () => {
       expect(m.zoom).toBeGreaterThanOrEqual(3);
       expect(m.name.length).toBeGreaterThan(2);
     }
+  });
+});
+
+describe("inUkraineAor", () => {
+  it("includes Kyiv and excludes Tehran", () => {
+    expect(inUkraineAor(50.45, 30.52)).toBe(true);
+    expect(inUkraineAor(35.7, 51.4)).toBe(false);
+  });
+});
+
+describe("looksUkraineRelated", () => {
+  it("matches theater language", () => {
+    expect(looksUkraineRelated("Strike reported near Kharkiv")).toBe(true);
+    expect(looksUkraineRelated("Typhoon approaches Tokyo")).toBe(false);
   });
 });
 

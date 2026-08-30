@@ -56,9 +56,6 @@ export function Header() {
         >
           CENTCOM · Threat COP
         </Link>
-        <span className="hidden sm:inline text-[10px] uppercase tracking-[0.14em] font-mono text-[var(--ok)]">
-          U//FOUO
-        </span>
       </div>
 
       <div className="flex items-center gap-3 text-xs font-mono text-[var(--text-muted)] ml-auto sm:ml-4">
@@ -103,14 +100,7 @@ export function Header() {
             LIVE OPEN-SOURCE
           </span>
         )}
-        {freshness?.demoDataActive && (
-          <span
-            className="px-2 py-0.5 rounded border border-[var(--demo)] bg-[var(--demo-wash)] text-[var(--demo)] font-semibold"
-            role="status"
-          >
-            Sensitive
-          </span>
-        )}
+
       </div>
 
       <div className="flex items-center gap-2 w-full sm:w-auto sm:flex-1 sm:max-w-md">

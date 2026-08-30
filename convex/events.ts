@@ -60,6 +60,7 @@ export const list = query({
     const search = args.search?.trim().toLowerCase().slice(0, 100);
 
     const filtered = all.filter((e) => {
+      if (e.isSynthetic) return false;
       if (e.status !== "active") return false;
       if (e.occurredAt < since) return false;
       if (categories.length && !categories.includes(e.category)) return false;
@@ -174,6 +175,7 @@ export const overview = query({
     const regions = args.regions ?? [];
 
     const filtered = all.filter((e) => {
+      if (e.isSynthetic) return false;
       if (e.status !== "active") return false;
       if (e.occurredAt < since) return false;
       if (categories.length && !categories.includes(e.category)) return false;

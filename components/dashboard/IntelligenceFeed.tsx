@@ -97,9 +97,7 @@ export function IntelligenceFeed() {
                     <span>{e.sourceCount} sources</span>
                     <span>·</span>
                     <span>Confidence: {e.confidence}</span>
-                    {e.isSynthetic && (
-                      <span className="text-[var(--demo)]">Sensitive</span>
-                    )}
+
                   </div>
                 </button>
                 <div className="mt-2 flex justify-end">

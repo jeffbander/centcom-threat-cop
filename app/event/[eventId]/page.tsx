@@ -99,16 +99,10 @@ function EventContent({ eventId }: { eventId: string }) {
               <span className={`px-2 py-0.5 rounded border sev-${detail.severity}`}>
                 {SEVERITY_LABELS[detail.severity as Severity]}
               </span>
-              {detail.isSynthetic && (
-                <span className="px-2 py-0.5 rounded border border-[var(--demo)] bg-[var(--demo-wash)] text-[var(--demo)] font-semibold">
-                  Sensitive
-                </span>
-              )}
+
             </div>
             <p className="text-sm text-[var(--text)]">{detail.summary}</p>
-            <p className="text-xs text-[var(--demo)] border border-[var(--demo)] bg-[var(--demo-wash)] rounded px-2 py-1.5">
-              {detail.generatedContentDisclosure}
-            </p>
+
             <p className="text-sm text-[var(--text-muted)]">
               {detail.region} · {formatAbsolute(detail.occurredAt)} (
               {formatRelativeTime(detail.occurredAt)})

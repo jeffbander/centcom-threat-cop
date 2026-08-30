@@ -17,9 +17,9 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CENTCOM · Threat COP Military UX",
+  title: "CENTCOM · Threat COP",
   description:
-    "Authenticated threat COP for geopolitical, infrastructure, public-health, weather, and security events. Sensitive operational briefing — not an emergency alerting system.",
+    "Authenticated common operating picture for geopolitical, infrastructure, weather, and security events.",
 };
 
 export default function RootLayout({

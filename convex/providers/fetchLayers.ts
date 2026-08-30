@@ -170,7 +170,7 @@ async function writeFirms(
 async function refreshFirms(ctx: ActionCtx) {
   const now = Date.now();
   const publicProvenance =
-    "NASA FIRMS Suomi-NPP VIIRS C2 Global 24h CSV (keyless) — public hotspot detections, not events";
+    "NASA FIRMS Suomi-NPP VIIRS C2 Global 24h";
 
   try {
     const res = await fetchRaw(FIRMS_PUBLIC_CSV_URL, {
@@ -275,9 +275,9 @@ function tleRecordFromApi(raw: unknown): Record<string, unknown> | null {
 async function refreshSatellites(ctx: ActionCtx) {
   const now = Date.now();
   const tleProvenance =
-    "Live TLE (tle.ivanstanojevic.me) · SGP4 at display time — orbital elements, not illustrative tracks";
+    "Live TLE · SGP4 at display time";
   const liveProvenance =
-    "CelesTrak GP JSON (OMM) · SGP4-propagated at display time — orbital elements, not illustrative tracks";
+    "CelesTrak GP JSON · SGP4 at display time";
   const byNorad = new Map<string, Record<string, unknown>>();
   const errors: string[] = [];
 
@@ -396,7 +396,7 @@ async function writeLayer(
 async function refreshQuakes(ctx: ActionCtx) {
   const now = Date.now();
   const provenance =
-    "USGS M2.5+ earthquakes (24h GeoJSON) — public detections, not an alert";
+    "USGS M2.5+ earthquakes (24h)";
   try {
     const res = await fetchRaw(
       "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
@@ -437,7 +437,7 @@ async function refreshQuakes(ctx: ActionCtx) {
 async function refreshAis(ctx: ActionCtx) {
   const now = Date.now();
   const provenance =
-    "Open Waters AIS (ais.openwaters.io) · volunteer/gov receivers, not targeting data";
+    "Open Waters AIS · theater vessels";
   const batches: AisContact[][] = [];
   const errors: string[] = [];
   try {
@@ -525,7 +525,7 @@ async function refreshLaunches(ctx: ActionCtx) {
 async function refreshAdsb(ctx: ActionCtx) {
   const now = Date.now();
   const provenance =
-    "adsb.lol military ADS-B (ODbL) · public transponders, not targeting data";
+    "adsb.lol military ADS-B";
   try {
     const res = await fetchRaw("https://api.adsb.lol/v2/mil", {
       timeoutMs: 15_000,

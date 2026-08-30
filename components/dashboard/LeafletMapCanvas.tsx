@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Real basemap + military COP overlays (Leaflet + free Carto dark tiles).
- * FIRMS + CelesTrak SGP4 are live contacts. Force markers stay illustrative.
+ * Live COP overlays on Esri imagery. Contacts are public feeds.
  */
 
 import { Fragment, useEffect, useMemo, useRef } from "react";
@@ -30,14 +29,7 @@ import {
   type Severity,
 } from "@/lib/constants";
 import { formatRelativeTime } from "@/lib/format";
-import {
-  ILLUSTRATIVE_UNITS,
-  KIND_GLYPH,
-  SIDE_COLOR,
-  THEATER_AOIS,
-  type ForceSide,
-  type UnitKind,
-} from "@/lib/showOverlays";
+import { THEATER_AOIS } from "@/lib/showOverlays";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import type { AdsbContact } from "@/convex/lib/adsb";
 import type { QuakeContact } from "@/convex/lib/quakes";
@@ -77,31 +69,6 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   moderate: "#eab308",
   informational: "#94a3b8",
 };
-
-function forceIcon(side: ForceSide, kind: UnitKind, callsign?: string) {
-  const color = SIDE_COLOR[side];
-  const glyph = KIND_GLYPH[kind] ?? "●";
-  // NATO-ish: blue rounded rect, red diamond via rotate
-  const borderRadius = side === "red" ? "2px" : side === "blue" ? "3px" : "50%";
-  const transform = side === "red" ? "rotate(45deg)" : "none";
-  const innerTransform = side === "red" ? "rotate(-45deg)" : "none";
-  const safeCs = (callsign ?? "").replace(/"/g, "");
-  return L.divIcon({
-    className: "gsm-force-icon",
-    html: `<div title="${safeCs}" style="
-      width:26px;height:26px;
-      background:#0b0f14ee;
-      border:2px solid ${color};
-      border-radius:${borderRadius};
-      transform:${transform};
-      color:${color};
-      box-shadow:0 0 8px ${color}55, 0 0 0 1px #000;
-      display:flex;align-items:center;justify-content:center;
-    "><span style="transform:${innerTransform};font-size:12px;line-height:1;font-family:ui-monospace,monospace">${glyph}</span></div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
-  });
-}
 
 function osintIcon(kind: OsintKind, name: string) {
   const color = OSINT_KIND_COLOR[kind];
@@ -624,7 +591,7 @@ function QuakesLayer({
                   latitude: q.latitude,
                   longitude: q.longitude,
                   title: `M${q.magnitude.toFixed(1)} ${q.place}`,
-                  subtitle: "USGS earthquake · contact, not an alert",
+                  subtitle: "USGS earthquake",
                   details: [
                     { label: "Mag", value: q.magnitude.toFixed(1) },
                     { label: "Depth", value: `${q.depthKm.toFixed(0)} km` },
@@ -781,10 +748,8 @@ export default function LeafletMapCanvas({
   events,
   selectedEventId,
   onSelectEvent,
-  showForces,
   showSatellites,
   showAois = true,
-  showRangeRings = true,
   showOsintInfra = true,
   showFirms = true,
   showAdsb = true,
@@ -811,10 +776,8 @@ export default function LeafletMapCanvas({
   events: MapEvent[];
   selectedEventId: Id<"events"> | null;
   onSelectEvent: (id: Id<"events">) => void;
-  showForces: boolean;
   showSatellites: boolean;
   showAois?: boolean;
-  showRangeRings?: boolean;
   showOsintInfra?: boolean;
   showFirms?: boolean;
   showAdsb?: boolean;
@@ -898,9 +861,6 @@ export default function LeafletMapCanvas({
             <Tooltip sticky>
               <div className="text-xs font-mono">
                 <strong>{ao.name}</strong> · {ao.status}
-                <div className="text-[10px] opacity-70">
-                  Illustrative AOI · not official boundary
-                </div>
               </div>
             </Tooltip>
           </Polygon>
@@ -980,25 +940,6 @@ export default function LeafletMapCanvas({
 
       {showOsintInfra && <OsintInfraLayer />}
 
-      {/* Range rings under force markers */}
-      {showForces &&
-        showRangeRings &&
-        ILLUSTRATIVE_UNITS.filter((u) => u.rangeKm).map((u) => (
-          <Circle
-            key={`rng-${u.id}`}
-            center={[u.latitude, u.longitude]}
-            radius={(u.rangeKm ?? 0) * 1000}
-            pathOptions={{
-              color: SIDE_COLOR[u.side],
-              weight: 1,
-              fillColor: SIDE_COLOR[u.side],
-              fillOpacity: 0.04,
-              dashArray: "3 5",
-              opacity: 0.55,
-            }}
-          />
-        ))}
-
       <MarkerClusterGroup
         chunkedLoading
         maxClusterRadius={40}
@@ -1055,32 +996,6 @@ export default function LeafletMapCanvas({
         })}
       </MarkerClusterGroup>
 
-      {showForces &&
-        ILLUSTRATIVE_UNITS.map((u) => (
-          <Marker
-            key={u.id}
-            position={[u.latitude, u.longitude]}
-            icon={forceIcon(u.side, u.kind, u.callsign)}
-            zIndexOffset={600}
-          >
-            <Tooltip direction="top" offset={[0, -10]}>
-              <div className="text-xs max-w-[240px]">
-                <div className="font-bold text-purple-700 text-[10px] uppercase tracking-wide">
-                  Illustrative · not real tracking
-                </div>
-                <div className="font-semibold" style={{ color: SIDE_COLOR[u.side] }}>
-                  {u.label}
-                  {u.callsign ? ` · ${u.callsign}` : ""}
-                </div>
-                <div className="opacity-80">
-                  {u.side.toUpperCase()} · {u.kind} · {u.theater}
-                  {u.rangeKm ? ` · R${u.rangeKm}km` : ""}
-                </div>
-                <div className="opacity-70 text-[10px] mt-0.5">{u.note}</div>
-              </div>
-            </Tooltip>
-          </Marker>
-        ))}
     </MapContainer>
   );
 }

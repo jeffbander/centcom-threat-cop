@@ -17,7 +17,7 @@ export const situation = query({
     const runs = await ctx.db.query("ingestionRuns").order("desc").take(60);
 
     const briefEvents: BriefEvent[] = events
-      .filter((e) => e.status === "active")
+      .filter((e) => e.status === "active" && !e.isSynthetic)
       .map((e) => ({
         _id: e._id,
         headline: e.headline,

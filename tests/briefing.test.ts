@@ -71,7 +71,7 @@ describe("composeSituationBrief", () => {
     expect(brief.topEvents[0]._id).toBe("1");
     expect(brief.sourceGaps).toContain("CISA KEV");
     expect(brief.sourceHealth.find((s) => s.provider === "usgs")?.ok).toBe(true);
-    expect(brief.disclosure).toMatch(/not verified intelligence/i);
+    expect(brief.disclosure).toMatch(/ingestion runs/i);
   });
 
   it("treats missing or stale runs as gaps", () => {

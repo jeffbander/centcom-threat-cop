@@ -42,6 +42,29 @@ export type ThreatCondition = {
   label: string;
 };
 
+/** Ukraine AOR box from the theater AOI (not a legal boundary). */
+export const UKRAINE_AOR = {
+  minLat: 44,
+  maxLat: 52.5,
+  minLon: 22,
+  maxLon: 40.5,
+} as const;
+
+export function inUkraineAor(lat: number, lon: number): boolean {
+  return (
+    lat >= UKRAINE_AOR.minLat &&
+    lat <= UKRAINE_AOR.maxLat &&
+    lon >= UKRAINE_AOR.minLon &&
+    lon <= UKRAINE_AOR.maxLon
+  );
+}
+
+export function looksUkraineRelated(text: string): boolean {
+  return /ukraine|ukrainian|kyiv|kiev|kharkiv|donetsk|luhansk|zaporizh|kherson|odes[sa]|crimea|black sea|kursk|belgorod|mariupol|sumy|dnipro/i.test(
+    text,
+  );
+}
+
 export function threatCondition(
   criticalCount: number,
   highCount: number,

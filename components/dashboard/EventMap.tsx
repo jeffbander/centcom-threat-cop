@@ -47,10 +47,8 @@ type EventRow = MapEvent & {
 };
 
 export function EventMap({
-  showForces = true,
   showSatellites = true,
   showAois = true,
-  showRangeRings = true,
   showOsintInfra = true,
   showFirms = true,
   showAdsb = true,
@@ -58,10 +56,8 @@ export function EventMap({
   showAis = true,
   showLaunches = true,
 }: {
-  showForces?: boolean;
   showSatellites?: boolean;
   showAois?: boolean;
-  showRangeRings?: boolean;
   showOsintInfra?: boolean;
   showFirms?: boolean;
   showAdsb?: boolean;
@@ -314,11 +310,7 @@ export function EventMap({
               AOIs
             </span>
           )}
-          {showForces && (
-            <span className="text-[var(--demo)] font-mono text-[10px] uppercase">
-              Forces
-            </span>
-          )}
+
           {showFirms && (
             <span className="text-[var(--ok)] font-mono text-[10px] uppercase">
               FIRMS {firmsSnap?.status ?? "…"}
@@ -414,10 +406,8 @@ export function EventMap({
               events={rows}
               selectedEventId={selectedEventId}
               onSelectEvent={onSelect}
-              showForces={showForces}
               showSatellites={showSatellites}
               showAois={showAois}
-              showRangeRings={showRangeRings}
               showOsintInfra={showOsintInfra}
               showFirms={showFirms}
               showAdsb={showAdsb}
@@ -436,7 +426,7 @@ export function EventMap({
               onCursor={onCursor}
               firmsProvenance={
                 firmsSnap?.provenance ??
-                "NASA FIRMS — public hotspot detections, not events"
+                "NASA FIRMS VIIRS 24h"
               }
               satProvenance={
                 satSnap?.provenance ??
@@ -448,11 +438,11 @@ export function EventMap({
               }
               quakeProvenance={
                 quakeSnap?.provenance ??
-                "USGS M2.5+ earthquakes — public detections, not an alert"
+                "USGS M2.5+ 24h"
               }
               aisProvenance={
                 aisSnap?.provenance ??
-                "Open Waters AIS · volunteer/gov receivers, not targeting data"
+                "Open Waters AIS"
               }
               launchProvenance={
                 launchSnap?.provenance ??

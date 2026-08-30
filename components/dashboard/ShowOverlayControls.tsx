@@ -79,8 +79,6 @@ export function ShowOverlayControls({
     { key: "quakes", label: "USGS quakes" },
     { key: "launches", label: "Launches" },
     { key: "milHud", label: "Military HUD" },
-    { key: "forces", label: "BLUFOR / OPFOR" },
-    { key: "rangeRings", label: "Range rings" },
     { key: "aois", label: "Theater AOIs" },
     { key: "newsWire", label: "OSINT wire" },
     { key: "xOsint", label: "X accounts" },
@@ -129,7 +127,7 @@ export function ShowOverlayControls({
         </label>
       ))}
       <span className="text-[var(--text-faint)] ml-auto max-w-lg text-right text-[10px] font-mono">
-        FIRMS · SGP4 · ADS-B mil · AIS Open Waters · USGS · LL2 · BLUFOR/OPFOR illustrative
+        FIRMS · SGP4 · ADS-B mil · AIS · USGS · launches
       </span>
     </div>
   );

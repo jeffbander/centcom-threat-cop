@@ -157,6 +157,6 @@ export function composeSituationBrief(input: {
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count),
     disclosure:
-      "Sitrep is assembled from this COP's stored events and ingestion runs. Generated summary — not verified intelligence. Source gaps mean a feed failed, is stale (>24h), or has not run.",
+      "Sitrep assembled from stored events and ingestion runs. Source gaps: feed failed, stale (>24h), or not yet run.",
   };
 }
