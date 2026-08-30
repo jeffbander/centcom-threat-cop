@@ -13,7 +13,7 @@ export function LayerPoller() {
     if (started.current) return;
     started.current = true;
     void refresh({ layer: "all" }).catch(() => {
-      /* rate-limit or missing snapshot is fine */
+      /* rate-limit, missing function, or first-load auth race */
     });
   }, [refresh]);
 

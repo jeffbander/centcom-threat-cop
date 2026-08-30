@@ -69,15 +69,19 @@ function DashboardInner() {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
     void (async () => {
-      await ensureUser({});
-      await bootstrap({});
       try {
-        await seedX({});
+        await ensureUser({});
+        await bootstrap({});
+        try {
+          await seedX({});
+        } catch {
+          /* optional */
+        }
+        trackProductEvent({ name: "dashboard_viewed" });
+        void track({ name: "dashboard_viewed" });
       } catch {
-        /* optional */
+        bootstrapped.current = false;
       }
-      trackProductEvent({ name: "dashboard_viewed" });
-      void track({ name: "dashboard_viewed" });
     })();
   }, [bootstrap, ensureUser, seedX, track]);
 
