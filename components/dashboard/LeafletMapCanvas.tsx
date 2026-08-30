@@ -4,7 +4,7 @@
  * Live COP overlays on Esri imagery. Contacts are public feeds.
  */
 
-import { Fragment, useEffect, useMemo, useRef } from "react";
+import { Fragment, memo, useEffect, useMemo, useRef, type RefObject } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -39,6 +39,7 @@ import type { AcledContact } from "@/convex/lib/acled";
 import { acledTone } from "@/convex/lib/acled";
 import type { SelectedContact } from "./DashboardContext";
 import { explainFirms } from "@/lib/firmsExplain";
+import { formatDms } from "@/lib/coords";
 import type { GroundTrack } from "@/lib/sgp4";
 import { destinationPoint } from "@/lib/spatialJoin";
 import {
@@ -177,17 +178,30 @@ export type LiveSatellite = {
 };
 
 function CursorHud({
-  onCursor,
+  readout,
 }: {
-  onCursor: (lat: number, lon: number) => void;
+  readout: RefObject<HTMLDivElement | null>;
 }) {
   const last = useRef(0);
   useMapEvents({
     mousemove(e) {
+      const node = readout.current;
+      if (!node) return;
       const t = performance.now();
       if (t - last.current < 80) return;
       last.current = t;
-      onCursor(e.latlng.lat, e.latlng.lng);
+      const lat = e.latlng.lat;
+      const lon = e.latlng.lng;
+      node.style.display = "flex";
+      const dms = node.querySelector("[data-dms]");
+      const dec = node.querySelector("[data-dec]");
+      if (dms) dms.textContent = formatDms(lat, lon);
+      if (dec) {
+        dec.textContent = `${lat.toFixed(4)} ${lon.toFixed(4)}`;
+      }
+    },
+    mouseout() {
+      if (readout.current) readout.current.style.display = "none";
     },
   });
   return null;
@@ -205,31 +219,28 @@ function FitOrFocus({
   mapFocus: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
 }) {
   const map = useMap();
+  const contactId = selectedContact?.id ?? null;
+  const contactLat = selectedContact?.latitude;
+  const contactLon = selectedContact?.longitude;
 
   useEffect(() => {
-    if (selectedId) {
-      const e = events.find((x) => x._id === selectedId);
-      if (e) {
-        map.flyTo([e.latitude, e.longitude], Math.max(map.getZoom(), 5), {
-          duration: 0.55,
-        });
-      }
+    if (!selectedId) return;
+    const e = events.find((x) => x._id === selectedId);
+    if (e) {
+      map.flyTo([e.latitude, e.longitude], Math.max(map.getZoom(), 5), {
+        duration: 0.55,
+      });
     }
-  }, [selectedId, events, map]);
+    // Fly only when the selected event changes, not when the event list refreshes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, map]);
 
   useEffect(() => {
-    if (selectedContact) {
-      map.flyTo(
-        [selectedContact.latitude, selectedContact.longitude],
-        Math.max(map.getZoom(), 4),
-        { duration: 0.55 },
-      );
-    }
-  }, [selectedContact, map]);
-
-  useEffect(() => {
-    map.setView([28, 40], 3);
-  }, [map]);
+    if (contactId == null || contactLat == null || contactLon == null) return;
+    map.flyTo([contactLat, contactLon], Math.max(map.getZoom(), 4), {
+      duration: 0.55,
+    });
+  }, [contactId, contactLat, contactLon, map]);
 
   useEffect(() => {
     if (!mapFocus) return;
@@ -241,16 +252,21 @@ function FitOrFocus({
   return null;
 }
 
+const aircraftIconCache = new Map<string, L.DivIcon>();
+
 function aircraftIcon(
   trackDeg: number | null,
   military: boolean,
   callsign: string,
   selected: boolean,
 ) {
+  const rot = Math.round(trackDeg ?? 0);
+  const key = `${rot}|${military ? 1 : 0}|${selected ? 1 : 0}|${callsign}`;
+  const hit = aircraftIconCache.get(key);
+  if (hit) return hit;
   const color = military ? "#fbbf24" : "#38bdf8";
-  const rot = trackDeg ?? 0;
   const safe = callsign.replace(/"/g, "");
-  return L.divIcon({
+  const icon = L.divIcon({
     className: "gsm-adsb-icon",
     html: `<div style="transform:rotate(${rot}deg);width:16px;height:16px">
       <div title="${safe}" style="
@@ -263,6 +279,9 @@ function aircraftIcon(
     iconSize: [16, 16],
     iconAnchor: [8, 8],
   });
+  if (aircraftIconCache.size > 400) aircraftIconCache.clear();
+  aircraftIconCache.set(key, icon);
+  return icon;
 }
 
 function LiveSatelliteLayer({
@@ -352,7 +371,7 @@ function LiveSatelliteLayer({
   );
 }
 
-function AdsbLayer({
+const AdsbLayer = memo(function AdsbLayer({
   contacts,
   selectedId,
   onSelect,
@@ -441,17 +460,22 @@ function AdsbLayer({
       })}
     </>
   );
-}
+});
+
+const shipIconCache = new Map<string, L.DivIcon>();
 
 function shipIcon(
   headingDeg: number | null,
   kind: string,
   selected: boolean,
 ) {
+  const rot = Math.round(headingDeg ?? 0);
+  const key = `${rot}|${kind}|${selected ? 1 : 0}`;
+  const hit = shipIconCache.get(key);
+  if (hit) return hit;
   const color =
     kind === "military" ? "#fbbf24" : kind === "tanker" ? "#fb923c" : "#22d3ee";
-  const rot = headingDeg ?? 0;
-  return L.divIcon({
+  const icon = L.divIcon({
     className: "gsm-ais-icon",
     html: `<div style="transform:rotate(${rot}deg);width:14px;height:14px">
       <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:12px solid ${
@@ -461,6 +485,9 @@ function shipIcon(
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
+  if (shipIconCache.size > 400) shipIconCache.clear();
+  shipIconCache.set(key, icon);
+  return icon;
 }
 
 function launchIcon(selected: boolean) {
@@ -473,7 +500,7 @@ function launchIcon(selected: boolean) {
   });
 }
 
-function AisLayer({
+const AisLayer = memo(function AisLayer({
   contacts,
   selectedId,
   onSelect,
@@ -556,7 +583,7 @@ function AisLayer({
       })}
     </>
   );
-}
+});
 
 function QuakesLayer({
   contacts,
@@ -743,7 +770,7 @@ function AcledLayer({
   );
 }
 
-function FirmsLayer({
+const FirmsLayer = memo(function FirmsLayer({
   detections,
   selectedId,
   onSelect,
@@ -762,7 +789,6 @@ function FirmsLayer({
         const selected = selectedId === d.id;
         const hot = highlightIds?.has(d.id) ?? false;
         const fill = d.frp >= 30 ? "#ef4444" : d.frp >= 10 ? "#f97316" : "#fbbf24";
-        const view = explainFirms(d, detections, Date.now(), provenance);
         return (
           <CircleMarker
             key={d.id}
@@ -775,12 +801,15 @@ function FirmsLayer({
               fillOpacity: 0.9,
             }}
             eventHandlers={{
-              click: () => onSelect(view),
+              click: () =>
+                onSelect(explainFirms(d, detections, Date.now(), provenance)),
             }}
           >
-            <Tooltip direction="top" offset={[0, -4]}>
+            <Tooltip direction="top" offset={[0, -4]} opacity={0.95}>
               <div className="text-xs">
-                <div className="font-semibold">{view.tooltip}</div>
+                <div className="font-semibold">
+                  {d.frp.toFixed(0)} MW thermal
+                </div>
                 <div className="opacity-80">NASA FIRMS heat pixel</div>
               </div>
             </Tooltip>
@@ -789,9 +818,9 @@ function FirmsLayer({
       })}
     </>
   );
-}
+});
 
-export default function LeafletMapCanvas({
+function LeafletMapCanvas({
   events,
   selectedEventId,
   onSelectEvent,
@@ -822,7 +851,7 @@ export default function LeafletMapCanvas({
   launchProvenance = "Launch Library 2",
   acledProvenance = "ACLED Ukraine",
   mapFocus = null,
-  onCursor,
+  cursorReadout,
 }: {
   events: MapEvent[];
   selectedEventId: Id<"events"> | null;
@@ -854,7 +883,7 @@ export default function LeafletMapCanvas({
   launchProvenance?: string;
   acledProvenance?: string;
   mapFocus?: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
-  onCursor?: (lat: number, lon: number) => void;
+  cursorReadout?: RefObject<HTMLDivElement | null>;
 }) {
   const validEvents = useMemo(
     () =>
@@ -896,7 +925,7 @@ export default function LeafletMapCanvas({
         selectedContact={selectedContact}
         mapFocus={mapFocus}
       />
-      {onCursor ? <CursorHud onCursor={onCursor} /> : null}
+      {cursorReadout ? <CursorHud readout={cursorReadout} /> : null}
       <ScaleControl position="bottomleft" imperial={false} maxWidth={120} />
 
       {/* Theater AOIs */}
@@ -1064,3 +1093,5 @@ export default function LeafletMapCanvas({
     </MapContainer>
   );
 }
+
+export default memo(LeafletMapCanvas);

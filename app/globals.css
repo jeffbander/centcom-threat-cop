@@ -277,7 +277,8 @@ body {
 /* Leaflet map shell — fills dashboard center pane */
 .gsm-map-shell {
   position: relative;
-  min-height: 320px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .gsm-leaflet-map {
@@ -285,6 +286,11 @@ body {
   width: 100%;
   background: #0e1520;
   font: inherit;
+  overflow: hidden;
+}
+
+.gsm-leaflet-map .leaflet-tooltip {
+  pointer-events: none;
 }
 
 .gsm-leaflet-map .leaflet-control-attribution {

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -32,7 +32,6 @@ import {
   type OmmRecord,
 } from "@/lib/sgp4";
 import type { LiveSatellite } from "./LeafletMapCanvas";
-import { formatDms } from "@/lib/coords";
 import { TrackBoard } from "./TrackBoard";
 
 const LeafletMapCanvas = dynamic(() => import("./LeafletMapCanvas"), {
@@ -88,48 +87,48 @@ export function EventMap({
   });
   const track = useMutation(api.analytics.track);
   const [showList, setShowList] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  const [satNow, setSatNow] = useState(() => Date.now());
+  const [snapNow, setSnapNow] = useState(() => Date.now());
+  const cursorReadout = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ms = showSatellites ? 1000 : 15_000;
-    const id = setInterval(() => setNow(Date.now()), ms);
+    const id = setInterval(() => setSnapNow(Date.now()), 15_000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    if (!showSatellites) return;
+    const id = setInterval(() => setSatNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [showSatellites]);
 
   const firmsSnap = useQuery(api.layers.getSnapshot, {
     layer: "firms",
-    now,
+    now: snapNow,
   });
   const satSnap = useQuery(api.layers.getSnapshot, {
     layer: "satellites",
-    now,
+    now: snapNow,
   });
   const adsbSnap = useQuery(api.layers.getSnapshot, {
     layer: "adsb",
-    now,
+    now: snapNow,
   });
   const quakeSnap = useQuery(api.layers.getSnapshot, {
     layer: "quakes",
-    now,
+    now: snapNow,
   });
   const aisSnap = useQuery(api.layers.getSnapshot, {
     layer: "ais",
-    now,
+    now: snapNow,
   });
   const launchSnap = useQuery(api.layers.getSnapshot, {
     layer: "launches",
-    now,
+    now: snapNow,
   });
   const acledSnap = useQuery(api.layers.getSnapshot, {
     layer: "acled",
-    now,
+    now: snapNow,
   });
-  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(
-    null,
-  );
-  const onCursor = useCallback((lat: number, lon: number) => {
-    setCursor({ lat, lon });
-  }, []);
 
   const firmsDetections = useMemo((): FirmsDetection[] => {
     const recs = firmsSnap?.records;
@@ -148,12 +147,12 @@ export function EventMap({
   const liveSatellites = useMemo((): LiveSatellite[] => {
     const recs = satSnap?.records;
     if (!Array.isArray(recs)) return [];
-    const trackEpoch = Math.floor(now / 15_000) * 15_000;
+    const trackEpoch = Math.floor(satNow / 15_000) * 15_000;
     const out: LiveSatellite[] = [];
     for (const raw of recs) {
       if (!raw || typeof raw !== "object") continue;
       const omm = raw as OmmRecord;
-      const geo = geodeticFromSatRecord(omm, now);
+      const geo = geodeticFromSatRecord(omm, satNow);
       if (!geo) continue;
       out.push({
         id: satelliteContactId(omm),
@@ -166,7 +165,7 @@ export function EventMap({
       });
     }
     return out;
-  }, [satSnap, now]);
+  }, [satSnap, satNow]);
 
   const adsbContacts = useMemo((): AdsbContact[] => {
     const recs = adsbSnap?.records;
@@ -219,8 +218,8 @@ export function EventMap({
   }, [acledSnap]);
 
   const uaFirmsDelta = useMemo(
-    () => firmsUkraineDelta(firmsDetections, now),
-    [firmsDetections, now],
+    () => firmsUkraineDelta(firmsDetections, satNow),
+    [firmsDetections, satNow],
   );
   const firmsHighlightIds = useMemo(
     () => new Set(uaFirmsDelta.last24.map((d) => d.id)),
@@ -338,11 +337,11 @@ export function EventMap({
       className="flex-1 min-h-[320px] flex flex-col border-r border-[var(--border)] bg-[var(--bg)]"
       aria-label="Event map"
     >
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] text-xs text-[var(--text-muted)]">
+      <div className="shrink-0 flex items-center justify-between gap-2 px-3 py-1.5 border-b border-[var(--border)] text-xs text-[var(--text-muted)] overflow-hidden">
         <span className="font-mono uppercase tracking-[0.14em] text-[var(--accent)]">
           COP · common operating picture
         </span>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="flex items-center gap-2 flex-nowrap overflow-x-auto min-w-0 justify-end">
           <span className="text-[var(--text-faint)] font-mono text-[10px]">
             ESRI imagery
           </span>
@@ -387,11 +386,6 @@ export function EventMap({
               ACLED {acledSnap?.status ?? "…"} {acledContacts.length}
             </span>
           )}
-          {cursor && (
-            <span className="text-[var(--text-faint)] font-mono text-[10px]">
-              {cursor.lat.toFixed(3)}° {cursor.lon.toFixed(3)}°
-            </span>
-          )}
           {showOsintInfra && (
             <span className="text-[var(--ok)] font-mono text-[10px] uppercase">
               OSINT infra
@@ -408,7 +402,7 @@ export function EventMap({
         </div>
       </div>
 
-      <div className="relative flex-1 min-h-[360px] gsm-map-shell">
+      <div className="relative flex-1 min-h-0 gsm-map-shell">
         <span className="gsm-map-corner gsm-map-corner-tl" aria-hidden />
         <span className="gsm-map-corner gsm-map-corner-tr" aria-hidden />
         <span className="gsm-map-corner gsm-map-corner-bl" aria-hidden />
@@ -434,14 +428,15 @@ export function EventMap({
           selectedId={selectedContact?.id ?? null}
           onSelect={setSelectedContact}
         />
-        {cursor && (
-          <div className="gsm-cursor-readout" aria-live="off">
-            <span className="text-[var(--accent)]">{formatDms(cursor.lat, cursor.lon)}</span>
-            <span className="text-[var(--text-faint)]">
-              {cursor.lat.toFixed(4)} {cursor.lon.toFixed(4)}
-            </span>
-          </div>
-        )}
+        <div
+          ref={cursorReadout}
+          className="gsm-cursor-readout"
+          aria-live="off"
+          style={{ display: "none" }}
+        >
+          <span data-dms className="text-[var(--accent)]" />
+          <span data-dec className="text-[var(--text-faint)]" />
+        </div>
         {events === undefined ? (
           <div className="absolute inset-0 flex items-center justify-center text-[var(--text-muted)] bg-[#0e1520]">
             Loading map…
@@ -472,7 +467,7 @@ export function EventMap({
               selectedContact={selectedContact}
               onSelectContact={setSelectedContact}
               mapFocus={mapFocus}
-              onCursor={onCursor}
+              cursorReadout={cursorReadout}
               firmsProvenance={
                 firmsSnap?.provenance ??
                 "NASA FIRMS VIIRS 24h"
