@@ -268,58 +268,9 @@ body {
   filter: drop-shadow(0 0 20px rgba(201, 162, 39, 0.35));
 }
 
-.gsm-warn-flash {
-  animation: gsm-warn-flash 1.8s ease-in-out infinite;
-}
-
-@keyframes gsm-warn-flash {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.72;
-  }
-}
-
-.gsm-radar-sweep {
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    rgba(34, 197, 94, 0.35) 40deg,
-    transparent 70deg
-  );
-  animation: gsm-radar-spin 3.2s linear infinite;
-}
-
-@keyframes gsm-radar-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.gsm-mil-ticker {
-  display: inline-block;
-  padding-left: 100%;
-  animation: gsm-mil-ticker 45s linear infinite;
-}
-
-@keyframes gsm-mil-ticker {
-  to {
-    transform: translateX(-100%);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .gsm-secure-gate .animate-pulse,
-  .gsm-warn-flash,
-  .gsm-radar-sweep,
-  .gsm-mil-ticker {
+  .gsm-secure-gate .animate-pulse {
     animation: none;
-  }
-  .gsm-mil-ticker {
-    padding-left: 0;
-    white-space: normal;
   }
 }
 

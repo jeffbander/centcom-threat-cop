@@ -5,13 +5,18 @@ test.describe("Landing and auth gate", () => {
     await page.goto("/");
     await expect(
       page.getByRole("heading", {
-        name: /one screen for significant global events/i,
+        name: /threat common operating picture/i,
       }),
     ).toBeVisible({ timeout: 30_000 });
     await expect(
-      page.getByRole("button", { name: /sign in to open the console/i }),
+      page.getByRole("button", { name: /^sign in$/i }),
     ).toBeVisible();
-    await expect(page.getByText(/not an emergency alerting system/i)).toBeVisible();
+    await expect(
+      page.getByText(/u\.s\. government information system/i),
+    ).toBeVisible();
+    await expect(page.getByRole("img", { name: /central command/i })).toHaveCount(
+      1,
+    );
   });
 
   test("bookmarks requires sign-in for unauthenticated users", async ({

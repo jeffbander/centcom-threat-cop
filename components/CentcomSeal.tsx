@@ -158,7 +158,6 @@ export function DoDStyleBanner({ className = "" }: { className?: string }) {
   return (
     <div
       className={`flex items-center justify-center gap-3 ${className}`}
-      aria-hidden
     >
       <CentcomSeal size={56} />
       <div className="text-left leading-tight">
@@ -172,7 +171,6 @@ export function DoDStyleBanner({ className = "" }: { className?: string }) {
           AOR THREAT COMMON OPERATING PICTURE
         </p>
       </div>
-      <CentcomSeal size={56} />
     </div>
   );
 }
