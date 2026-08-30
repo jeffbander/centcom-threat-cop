@@ -28,7 +28,7 @@ export function IntelligenceFeed() {
 
   return (
     <section
-      className="w-full flex-1 flex flex-col bg-[var(--bg-panel)] min-h-0"
+      className="w-full flex flex-col bg-[var(--bg-panel)]"
       aria-label="Intelligence feed"
     >
       <div className="px-3 py-1.5 border-b border-[var(--border)] flex items-center justify-between">
@@ -40,7 +40,7 @@ export function IntelligenceFeed() {
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto gsm-scroll min-h-0">
+      <div>
         {events === undefined && (
           <p className="p-4 text-sm text-[var(--text-muted)]" aria-busy="true">
             Loading feed…

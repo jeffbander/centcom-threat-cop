@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AorGuide } from "./AorGuide";
 import { FilterRail } from "./FilterRail";
+import { AorWatchStack } from "./UkraineWatch";
 import { useDashboard } from "./DashboardContext";
 
 export function CopSettingsPanel() {
@@ -51,9 +52,21 @@ export function CopSettingsPanel() {
           <FilterRail />
         </section>
 
-        <div className="border border-[var(--border)] rounded p-3">
-          <AorGuide />
-        </div>
+        <details className="border border-[var(--border)] rounded p-3 group">
+          <summary className="cursor-pointer text-[11px] uppercase tracking-[0.16em] font-mono text-[var(--accent)] list-none flex items-center justify-between">
+            AOR watch
+            <span className="text-[var(--text-faint)] normal-case tracking-normal text-[10px] group-open:hidden">
+              show
+            </span>
+            <span className="text-[var(--text-faint)] normal-case tracking-normal text-[10px] hidden group-open:inline">
+              hide
+            </span>
+          </summary>
+          <div className="mt-3 flex flex-col gap-3">
+            <AorGuide />
+            <AorWatchStack />
+          </div>
+        </details>
 
         <p className="text-xs text-[var(--text-faint)]">
           Saved defaults for next login live on{" "}

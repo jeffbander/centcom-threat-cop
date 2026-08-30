@@ -46,20 +46,17 @@ export function MiddleEastWatch() {
   );
 }
 
-/** Left-rail dock so AOR boards do not sit on top of the map. */
-export function AorWatchRail() {
+/** AOR boards for the right-rail scroll and Settings dropdown. */
+export function AorWatchStack({ showGuide = false }: { showGuide?: boolean }) {
   return (
-    <aside
-      className="hidden lg:flex w-[270px] xl:w-[300px] shrink-0 flex-col min-h-0 overflow-y-auto gsm-scroll border-r border-[var(--border)] bg-[#070b10]"
-      aria-label="Theater AOR watch"
-    >
+    <div className="flex flex-col bg-[#070b10]" aria-label="Theater AOR watch">
       <p className="px-2 py-1.5 border-b border-[var(--border)] text-[9px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)]">
         AOR watch
       </p>
-      <AorGuide compact />
+      {showGuide ? <AorGuide compact /> : null}
       <UkraineWatch />
       <MiddleEastWatch />
-    </aside>
+    </div>
   );
 }
 

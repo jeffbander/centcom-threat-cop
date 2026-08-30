@@ -70,7 +70,7 @@ export function XOsintFeed() {
 
   return (
     <section
-      className="w-full flex-1 flex flex-col bg-[#0c1018] min-h-0"
+      className="w-full flex flex-col bg-[#0c1018]"
       aria-label="Operational Briefing"
     >
       {/* Flashing red Operational Briefing header */}
@@ -273,7 +273,7 @@ export function XOsintFeed() {
       )}
 
       {/* Larger readable posts */}
-      <div className="flex-1 overflow-y-auto gsm-scroll min-h-0">
+      <div>
         {posts === undefined && (
           <p className="p-5 text-base text-[var(--text-muted)]">
             Loading briefing…

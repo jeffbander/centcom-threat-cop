@@ -23,7 +23,7 @@ import { EventDetailPanel } from "./EventDetailPanel";
 import { NewsTicker } from "./NewsTicker";
 import { MilitaryHud } from "./MilitaryHud";
 import { TheaterMissions } from "./TheaterMissions";
-import { AorWatchRail } from "./UkraineWatch";
+import { AorWatchStack } from "./UkraineWatch";
 import { ClassificationStrip } from "./ClassificationStrip";
 import { CopHotkeys } from "./CopHotkeys";
 import { CopShare } from "./CopShare";
@@ -219,81 +219,83 @@ function DashboardInner() {
       </div>
       {overlays.newsWire && <NewsTicker />}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-        <AorWatchRail />
-        <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0">
-          <EventMap
-            showSatellites={overlays.satellites}
-            showAois={overlays.aois}
-            showOsintInfra={overlays.osintInfra}
-            showFirms={overlays.firms}
-            showAdsb={overlays.adsb}
-            showQuakes={overlays.quakes}
-            showAis={overlays.ais}
-            showLaunches={overlays.launches}
-            showAcled={overlays.acled}
-          />
-          <div className="w-full lg:w-[min(36vw,460px)] xl:w-[480px] shrink-0 flex flex-col min-h-0 border-l border-[var(--border)]">
+        <EventMap
+          showSatellites={overlays.satellites}
+          showAois={overlays.aois}
+          showOsintInfra={overlays.osintInfra}
+          showFirms={overlays.firms}
+          showAdsb={overlays.adsb}
+          showQuakes={overlays.quakes}
+          showAis={overlays.ais}
+          showLaunches={overlays.launches}
+          showAcled={overlays.acled}
+        />
+        <div className="w-full lg:w-[min(36vw,460px)] xl:w-[480px] shrink-0 flex flex-col min-h-0 border-l border-[var(--border)]">
+          <div className="shrink-0 max-h-[28vh] overflow-y-auto gsm-scroll">
             <ContactSubjectPanel />
-            {/* Auth / geo monitoring strip — directly above Operational Briefing */}
-            <SatelliteLinkStatus />
-            <div
-              className="flex border-b border-[var(--border)] bg-[var(--bg-elevated)] text-xs font-mono uppercase tracking-[0.1em]"
-              role="tablist"
-              aria-label="Right rail feeds"
+          </div>
+          <SatelliteLinkStatus />
+          <div
+            className="flex shrink-0 border-b border-[var(--border)] bg-[var(--bg-elevated)] text-xs font-mono uppercase tracking-[0.1em]"
+            role="tablist"
+            aria-label="Right rail feeds"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightTab === "sitrep"}
+              onClick={() => setRightTab("sitrep")}
+              className={`flex-1 px-2 py-1.5 ${
+                rightTab === "sitrep"
+                  ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
+                  : "text-[var(--text-faint)] hover:text-[var(--text)]"
+              }`}
             >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={rightTab === "sitrep"}
-                onClick={() => setRightTab("sitrep")}
-                className={`flex-1 px-2 py-1.5 ${
-                  rightTab === "sitrep"
-                    ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
-                    : "text-[var(--text-faint)] hover:text-[var(--text)]"
-                }`}
-              >
-                Sitrep
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={rightTab === "threat"}
-                onClick={() => setRightTab("threat")}
-                className={`flex-1 px-2 py-1.5 ${
-                  rightTab === "threat"
-                    ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
-                    : "text-[var(--text-faint)] hover:text-[var(--text)]"
-                }`}
-              >
-                Threat
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={rightTab === "xosint"}
-                onClick={() => setRightTab("xosint")}
-                className={`flex-1 px-2 py-1.5 ${
-                  rightTab === "xosint"
-                    ? "text-[var(--critical)] border-b-2 border-[var(--critical)] bg-[var(--critical-wash)]"
-                    : "text-[var(--text-faint)] hover:text-[var(--text)]"
-                }`}
-              >
-                X OSINT
-              </button>
-            </div>
-            <div className="flex-1 min-h-0 flex flex-col [&>section]:border-l-0 [&>section]:w-full [&>section]:lg:w-full">
-              {rightTab === "sitrep" ? (
-                <SituationBrief />
-              ) : rightTab === "threat" ? (
-                <IntelligenceFeed />
-              ) : overlays.xOsint ? (
-                <XOsintFeed />
-              ) : (
-                <p className="p-4 text-sm text-[var(--text-muted)]">
-                  X OSINT layer hidden — enable in COP layers.
-                </p>
-              )}
-            </div>
+              Sitrep
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightTab === "threat"}
+              onClick={() => setRightTab("threat")}
+              className={`flex-1 px-2 py-1.5 ${
+                rightTab === "threat"
+                  ? "text-[var(--accent)] border-b-2 border-[var(--accent)]"
+                  : "text-[var(--text-faint)] hover:text-[var(--text)]"
+              }`}
+            >
+              Threat
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={rightTab === "xosint"}
+              onClick={() => setRightTab("xosint")}
+              className={`flex-1 px-2 py-1.5 ${
+                rightTab === "xosint"
+                  ? "text-[var(--critical)] border-b-2 border-[var(--critical)] bg-[var(--critical-wash)]"
+                  : "text-[var(--text-faint)] hover:text-[var(--text)]"
+              }`}
+            >
+              X OSINT
+            </button>
+          </div>
+          <div
+            id="cop-right-scroll"
+            className="flex-1 min-h-0 overflow-y-auto gsm-scroll overscroll-contain"
+          >
+            <AorWatchStack />
+            {rightTab === "sitrep" ? (
+              <SituationBrief />
+            ) : rightTab === "threat" ? (
+              <IntelligenceFeed />
+            ) : overlays.xOsint ? (
+              <XOsintFeed />
+            ) : (
+              <p className="p-4 text-sm text-[var(--text-muted)]">
+                X OSINT layer hidden — enable in COP layers.
+              </p>
+            )}
           </div>
         </div>
       </div>
