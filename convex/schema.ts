@@ -197,6 +197,9 @@ export default defineSchema({
       v.literal("firms"),
       v.literal("satellites"),
       v.literal("adsb"),
+      v.literal("quakes"),
+      v.literal("ais"),
+      v.literal("launches"),
     ),
     fetchedAt: v.number(),
     status: v.union(

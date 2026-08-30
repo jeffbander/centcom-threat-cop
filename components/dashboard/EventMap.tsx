@@ -17,6 +17,12 @@ import { trackProductEvent } from "@/lib/analytics";
 import type { MapEvent } from "./LeafletMapCanvas";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import type { AdsbContact } from "@/convex/lib/adsb";
+import type { QuakeContact } from "@/convex/lib/quakes";
+import type { AisContact } from "@/convex/lib/ais";
+import type { LaunchContact } from "@/convex/lib/launches";
+import type { SelectedContact } from "./DashboardContext";
+import { buildNearbyRoster } from "@/lib/nearby";
+import { NearbyRoster } from "./NearbyRoster";
 import {
   geodeticFromSatRecord,
   groundTrack,
@@ -48,6 +54,9 @@ export function EventMap({
   showOsintInfra = true,
   showFirms = true,
   showAdsb = true,
+  showQuakes = true,
+  showAis = true,
+  showLaunches = true,
 }: {
   showForces?: boolean;
   showSatellites?: boolean;
@@ -56,6 +65,9 @@ export function EventMap({
   showOsintInfra?: boolean;
   showFirms?: boolean;
   showAdsb?: boolean;
+  showQuakes?: boolean;
+  showAis?: boolean;
+  showLaunches?: boolean;
 }) {
   const {
     filters,
@@ -94,6 +106,18 @@ export function EventMap({
   });
   const adsbSnap = useQuery(api.layers.getSnapshot, {
     layer: "adsb",
+    now,
+  });
+  const quakeSnap = useQuery(api.layers.getSnapshot, {
+    layer: "quakes",
+    now,
+  });
+  const aisSnap = useQuery(api.layers.getSnapshot, {
+    layer: "ais",
+    now,
+  });
+  const launchSnap = useQuery(api.layers.getSnapshot, {
+    layer: "launches",
     now,
   });
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(
@@ -149,6 +173,108 @@ export function EventMap({
       return typeof a.id === "string" && Number.isFinite(a.latitude);
     });
   }, [adsbSnap]);
+
+  const quakeContacts = useMemo((): QuakeContact[] => {
+    const recs = quakeSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    return recs.filter((r): r is QuakeContact => {
+      if (!r || typeof r !== "object") return false;
+      const q = r as QuakeContact;
+      return typeof q.id === "string" && Number.isFinite(q.latitude);
+    });
+  }, [quakeSnap]);
+
+  const aisContacts = useMemo((): AisContact[] => {
+    const recs = aisSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    return recs.filter((r): r is AisContact => {
+      if (!r || typeof r !== "object") return false;
+      const a = r as AisContact;
+      return typeof a.id === "string" && Number.isFinite(a.latitude);
+    });
+  }, [aisSnap]);
+
+  const launchContacts = useMemo((): LaunchContact[] => {
+    const recs = launchSnap?.records;
+    if (!Array.isArray(recs)) return [];
+    return recs.filter((r): r is LaunchContact => {
+      if (!r || typeof r !== "object") return false;
+      const a = r as LaunchContact;
+      return typeof a.id === "string" && Number.isFinite(a.latitude);
+    });
+  }, [launchSnap]);
+
+  const rosterContacts = useMemo((): SelectedContact[] => {
+    const out: SelectedContact[] = [];
+    for (const a of adsbContacts) {
+      out.push({
+        kind: "adsb",
+        id: a.id,
+        latitude: a.latitude,
+        longitude: a.longitude,
+        title: a.callsign,
+        subtitle: a.typeCode,
+        details: [],
+        provenance: adsbSnap?.provenance ?? "",
+      });
+    }
+    for (const a of aisContacts) {
+      out.push({
+        kind: "ais",
+        id: a.id,
+        latitude: a.latitude,
+        longitude: a.longitude,
+        title: a.name,
+        subtitle: a.shipTypeLabel,
+        details: [],
+        provenance: aisSnap?.provenance ?? "",
+      });
+    }
+    for (const q of quakeContacts) {
+      out.push({
+        kind: "quake",
+        id: q.id,
+        latitude: q.latitude,
+        longitude: q.longitude,
+        title: q.title,
+        subtitle: `M${q.magnitude.toFixed(1)}`,
+        details: [],
+        provenance: quakeSnap?.provenance ?? "",
+      });
+    }
+    for (const ln of launchContacts) {
+      out.push({
+        kind: "launch",
+        id: ln.id,
+        latitude: ln.latitude,
+        longitude: ln.longitude,
+        title: ln.name,
+        subtitle: ln.status,
+        details: [],
+        provenance: launchSnap?.provenance ?? "",
+      });
+    }
+    return out;
+  }, [
+    adsbContacts,
+    aisContacts,
+    quakeContacts,
+    launchContacts,
+    adsbSnap,
+    aisSnap,
+    quakeSnap,
+    launchSnap,
+  ]);
+
+  const nearbyItems = useMemo(() => {
+    const origin = selectedContact
+      ? {
+          latitude: selectedContact.latitude,
+          longitude: selectedContact.longitude,
+        }
+      : null;
+    return buildNearbyRoster(origin, rosterContacts, 250);
+  }, [selectedContact, rosterContacts]);
 
   const rows = (events as EventRow[] | undefined) ?? [];
 
@@ -208,6 +334,21 @@ export function EventMap({
               ADS-B {adsbSnap?.status ?? "…"} {adsbContacts.length}
             </span>
           )}
+          {showAis && (
+            <span className="text-[#22d3ee] font-mono text-[10px] uppercase">
+              AIS {aisSnap?.status ?? "…"} {aisContacts.length}
+            </span>
+          )}
+          {showQuakes && (
+            <span className="text-[#fb7185] font-mono text-[10px] uppercase">
+              USGS {quakeSnap?.status ?? "…"} {quakeContacts.length}
+            </span>
+          )}
+          {showLaunches && (
+            <span className="text-[#c4b5fd] font-mono text-[10px] uppercase">
+              LL2 {launchSnap?.status ?? "…"} {launchContacts.length}
+            </span>
+          )}
           {cursor && (
             <span className="text-[var(--text-faint)] font-mono text-[10px]">
               {cursor.lat.toFixed(3)}° {cursor.lon.toFixed(3)}°
@@ -250,6 +391,11 @@ export function EventMap({
             onSelect={setSelectedContact}
           />
         )}
+        <NearbyRoster
+          items={nearbyItems}
+          selectedId={selectedContact?.id ?? null}
+          onSelect={setSelectedContact}
+        />
         {cursor && (
           <div className="gsm-cursor-readout" aria-live="off">
             <span className="text-[var(--accent)]">{formatDms(cursor.lat, cursor.lon)}</span>
@@ -275,9 +421,15 @@ export function EventMap({
               showOsintInfra={showOsintInfra}
               showFirms={showFirms}
               showAdsb={showAdsb}
+              showQuakes={showQuakes}
+              showAis={showAis}
+              showLaunches={showLaunches}
               firmsDetections={firmsDetections}
               liveSatellites={liveSatellites}
               adsbContacts={adsbContacts}
+              quakeContacts={quakeContacts}
+              aisContacts={aisContacts}
+              launchContacts={launchContacts}
               selectedContact={selectedContact}
               onSelectContact={setSelectedContact}
               mapFocus={mapFocus}
@@ -293,6 +445,18 @@ export function EventMap({
               adsbProvenance={
                 adsbSnap?.provenance ??
                 "adsb.lol military ADS-B (ODbL) · public transponders"
+              }
+              quakeProvenance={
+                quakeSnap?.provenance ??
+                "USGS M2.5+ earthquakes — public detections, not an alert"
+              }
+              aisProvenance={
+                aisSnap?.provenance ??
+                "Open Waters AIS · volunteer/gov receivers, not targeting data"
+              }
+              launchProvenance={
+                launchSnap?.provenance ??
+                "Launch Library 2 · upcoming pads, not range safety"
               }
             />
           </div>

@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   DashboardProvider,
+  useDashboard,
   type FilterState,
 } from "./DashboardContext";
 import { Header } from "./Header";
@@ -24,10 +25,13 @@ import { MilitaryHud } from "./MilitaryHud";
 import { TheaterMissions } from "./TheaterMissions";
 import { ClassificationStrip } from "./ClassificationStrip";
 import { CopHotkeys } from "./CopHotkeys";
+import { CopShare } from "./CopShare";
 import {
   ShowOverlayControls,
   type OverlayToggles,
 } from "./ShowOverlayControls";
+import { parseCopView, type CopLayerKey } from "@/lib/copView";
+import { THEATER_MISSIONS } from "@/lib/theaters";
 import type { PreferredView, TimeWindow } from "@/lib/constants";
 import { trackProductEvent } from "@/lib/analytics";
 import { isTimeWindow, isPreferredView } from "@/lib/constants";
@@ -43,6 +47,9 @@ function DashboardInner() {
     satellites: true,
     firms: true,
     adsb: true,
+    quakes: true,
+    ais: true,
+    launches: true,
     newsWire: false,
     aois: true,
     rangeRings: false,
@@ -61,9 +68,40 @@ function DashboardInner() {
     now,
   });
   const adsbSnap = useQuery(api.layers.getSnapshot, { layer: "adsb", now });
+  const quakeSnap = useQuery(api.layers.getSnapshot, { layer: "quakes", now });
+  const aisSnap = useQuery(api.layers.getSnapshot, { layer: "ais", now });
+  const launchSnap = useQuery(api.layers.getSnapshot, {
+    layer: "launches",
+    now,
+  });
   const [rightTab, setRightTab] = useState<"sitrep" | "threat" | "xosint">(
     "sitrep",
   );
+  const { requestMapFocus } = useDashboard();
+  const viewApplied = useRef(false);
+
+  useEffect(() => {
+    if (viewApplied.current) return;
+    if (typeof window === "undefined") return;
+    viewApplied.current = true;
+    const view = parseCopView(window.location.search);
+    if (view.layers) {
+      const on = new Set(view.layers);
+      setOverlays((prev) => ({
+        ...prev,
+        firms: on.has("firms"),
+        satellites: on.has("satellites"),
+        adsb: on.has("adsb"),
+        quakes: on.has("quakes"),
+        ais: on.has("ais"),
+        launches: on.has("launches"),
+      }));
+    }
+    if (view.ao) {
+      const m = THEATER_MISSIONS.find((t) => t.id === view.ao);
+      if (m) requestMapFocus(m.latitude, m.longitude, m.zoom);
+    }
+  }, [requestMapFocus]);
 
   useEffect(() => {
     if (bootstrapped.current) return;
@@ -98,9 +136,15 @@ function DashboardInner() {
           firmsCount={firmsSnap?.recordsReceived ?? 0}
           satCount={satSnap?.recordsReceived ?? 0}
           adsbCount={adsbSnap?.recordsReceived ?? 0}
+          quakeCount={quakeSnap?.recordsReceived ?? 0}
+          aisCount={aisSnap?.recordsReceived ?? 0}
+          launchCount={launchSnap?.recordsReceived ?? 0}
           firmsStatus={firmsSnap?.status ?? "…"}
           satStatus={satSnap?.status ?? "…"}
           adsbStatus={adsbSnap?.status ?? "…"}
+          quakeStatus={quakeSnap?.status ?? "…"}
+          aisStatus={aisSnap?.status ?? "…"}
+          launchStatus={launchSnap?.status ?? "…"}
         />
       ) : (
         <OverviewBar />
@@ -126,8 +170,43 @@ function DashboardInner() {
             ? { status: adsbSnap.status, count: adsbSnap.recordsReceived }
             : undefined
         }
+        quakeChip={
+          quakeSnap
+            ? { status: quakeSnap.status, count: quakeSnap.recordsReceived }
+            : undefined
+        }
+        aisChip={
+          aisSnap
+            ? { status: aisSnap.status, count: aisSnap.recordsReceived }
+            : undefined
+        }
+        launchChip={
+          launchSnap
+            ? { status: launchSnap.status, count: launchSnap.recordsReceived }
+            : undefined
+        }
       />
-      <TheaterMissions />
+      <div className="flex items-center">
+        <div className="flex-1 min-w-0">
+          <TheaterMissions />
+        </div>
+        <div className="shrink-0 pr-2 py-1 border-b border-[var(--border)] bg-[#070b10] text-[10px] font-mono">
+          <CopShare
+            enabledLayers={
+              (
+                [
+                  overlays.firms && "firms",
+                  overlays.satellites && "satellites",
+                  overlays.adsb && "adsb",
+                  overlays.quakes && "quakes",
+                  overlays.ais && "ais",
+                  overlays.launches && "launches",
+                ] as const
+              ).filter(Boolean) as CopLayerKey[]
+            }
+          />
+        </div>
+      </div>
       {overlays.newsWire && <NewsTicker />}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         <FilterRail />
@@ -140,6 +219,9 @@ function DashboardInner() {
             showOsintInfra={overlays.osintInfra}
             showFirms={overlays.firms}
             showAdsb={overlays.adsb}
+            showQuakes={overlays.quakes}
+            showAis={overlays.ais}
+            showLaunches={overlays.launches}
           />
           <div className="w-full lg:w-[min(36vw,460px)] xl:w-[480px] shrink-0 flex flex-col min-h-0 border-l border-[var(--border)]">
             <ContactSubjectPanel />

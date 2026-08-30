@@ -15,6 +15,9 @@ import { useDashboard } from "./DashboardContext";
 import { FIRMS_NEAR_EVENT_KM, firmsNearEvent } from "@/lib/spatialJoin";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import type { AdsbContact } from "@/convex/lib/adsb";
+import type { QuakeContact } from "@/convex/lib/quakes";
+import type { AisContact } from "@/convex/lib/ais";
+import type { LaunchContact } from "@/convex/lib/launches";
 import {
   geodeticFromSatRecord,
   satelliteContactId,
@@ -43,6 +46,12 @@ export function SituationBrief() {
     now,
   });
   const adsbSnap = useQuery(api.layers.getSnapshot, { layer: "adsb", now });
+  const quakeSnap = useQuery(api.layers.getSnapshot, { layer: "quakes", now });
+  const aisSnap = useQuery(api.layers.getSnapshot, { layer: "ais", now });
+  const launchSnap = useQuery(api.layers.getSnapshot, {
+    layer: "launches",
+    now,
+  });
   const events = useQuery(api.events.list, {
     categories: filters.categories,
     severities: filters.severities,
@@ -131,8 +140,55 @@ export function SituationBrief() {
         });
       }
     }
+    const quakes = quakeSnap?.records;
+    if (Array.isArray(quakes)) {
+      for (const raw of quakes) {
+        if (!raw || typeof raw !== "object") continue;
+        const q = raw as QuakeContact;
+        if (typeof q.id !== "string" || !Number.isFinite(q.latitude)) continue;
+        out.push({
+          layerKey: "quakes",
+          id: q.id,
+          latitude: q.latitude,
+          longitude: q.longitude,
+          name: q.title,
+          magnitude: q.magnitude,
+        });
+      }
+    }
+    const vessels = aisSnap?.records;
+    if (Array.isArray(vessels)) {
+      for (const raw of vessels) {
+        if (!raw || typeof raw !== "object") continue;
+        const a = raw as AisContact;
+        if (typeof a.id !== "string" || !Number.isFinite(a.latitude)) continue;
+        out.push({
+          layerKey: "ais",
+          id: a.id,
+          latitude: a.latitude,
+          longitude: a.longitude,
+          name: a.name,
+          sogKt: a.sogKt ?? undefined,
+        });
+      }
+    }
+    const pads = launchSnap?.records;
+    if (Array.isArray(pads)) {
+      for (const raw of pads) {
+        if (!raw || typeof raw !== "object") continue;
+        const ln = raw as LaunchContact;
+        if (typeof ln.id !== "string" || !Number.isFinite(ln.latitude)) continue;
+        out.push({
+          layerKey: "launches",
+          id: ln.id,
+          latitude: ln.latitude,
+          longitude: ln.longitude,
+          name: ln.name,
+        });
+      }
+    }
     return out;
-  }, [events, firmsDetections, satSnap, adsbSnap, now]);
+  }, [events, firmsDetections, satSnap, adsbSnap, quakeSnap, aisSnap, launchSnap, now]);
 
   return (
     <section

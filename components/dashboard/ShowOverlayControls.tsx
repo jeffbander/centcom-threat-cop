@@ -7,6 +7,9 @@ export type OverlayToggles = {
   satellites: boolean;
   firms: boolean;
   adsb: boolean;
+  quakes: boolean;
+  ais: boolean;
+  launches: boolean;
   newsWire: boolean;
   aois: boolean;
   rangeRings: boolean;
@@ -55,17 +58,26 @@ export function ShowOverlayControls({
   firmsChip,
   satChip,
   adsbChip,
+  quakeChip,
+  aisChip,
+  launchChip,
 }: {
   value: OverlayToggles;
   onChange: (next: OverlayToggles) => void;
   firmsChip?: LayerChip;
   satChip?: LayerChip;
   adsbChip?: LayerChip;
+  quakeChip?: LayerChip;
+  aisChip?: LayerChip;
+  launchChip?: LayerChip;
 }) {
   const items: Array<{ key: keyof OverlayToggles; label: string }> = [
     { key: "firms", label: "FIRMS fires" },
     { key: "satellites", label: "SGP4 sats" },
     { key: "adsb", label: "ADS-B MIL" },
+    { key: "ais", label: "AIS vessels" },
+    { key: "quakes", label: "USGS quakes" },
+    { key: "launches", label: "Launches" },
     { key: "milHud", label: "Military HUD" },
     { key: "forces", label: "BLUFOR / OPFOR" },
     { key: "rangeRings", label: "Range rings" },
@@ -107,10 +119,17 @@ export function ShowOverlayControls({
           {item.key === "adsb" ? (
             <SourceChip label="ADS-B" chip={adsbChip} />
           ) : null}
+          {item.key === "ais" ? <SourceChip label="AIS" chip={aisChip} /> : null}
+          {item.key === "quakes" ? (
+            <SourceChip label="USGS" chip={quakeChip} />
+          ) : null}
+          {item.key === "launches" ? (
+            <SourceChip label="LL2" chip={launchChip} />
+          ) : null}
         </label>
       ))}
       <span className="text-[var(--text-faint)] ml-auto max-w-lg text-right text-[10px] font-mono">
-        FIRMS NASA · SGP4 · ADS-B mil public · BLUFOR/OPFOR illustrative
+        FIRMS · SGP4 · ADS-B mil · AIS Open Waters · USGS · LL2 · BLUFOR/OPFOR illustrative
       </span>
     </div>
   );

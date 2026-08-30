@@ -9,17 +9,30 @@ export const LAYER_SOURCE_STATES = [
 
 export type LayerSourceState = (typeof LAYER_SOURCE_STATES)[number];
 
-export const LAYER_IDS = ["firms", "satellites", "adsb"] as const;
+export const LAYER_IDS = [
+  "firms",
+  "satellites",
+  "adsb",
+  "quakes",
+  "ais",
+  "launches",
+] as const;
 export type LayerId = (typeof LAYER_IDS)[number];
 
 export const FIRMS_STALE_MS = 45 * 60 * 1000;
 export const SATELLITES_STALE_MS = 6 * 60 * 60 * 1000;
 export const ADSB_STALE_MS = 3 * 60 * 1000;
+export const QUAKES_STALE_MS = 20 * 60 * 1000;
+export const AIS_STALE_MS = 8 * 60 * 1000;
+export const LAUNCHES_STALE_MS = 6 * 60 * 60 * 1000;
 
 export const STALE_AFTER_MS: Record<LayerId, number> = {
   firms: FIRMS_STALE_MS,
   satellites: SATELLITES_STALE_MS,
   adsb: ADSB_STALE_MS,
+  quakes: QUAKES_STALE_MS,
+  ais: AIS_STALE_MS,
+  launches: LAUNCHES_STALE_MS,
 };
 
 export function isLayerSourceState(value: string): value is LayerSourceState {

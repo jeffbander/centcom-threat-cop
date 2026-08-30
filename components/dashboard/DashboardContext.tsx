@@ -12,7 +12,7 @@ import type { Category, PreferredView, Severity, TimeWindow } from "@/lib/consta
 import type { Id } from "@/convex/_generated/dataModel";
 
 export type SelectedContact = {
-  kind: "firms" | "satellite" | "adsb";
+  kind: "firms" | "satellite" | "adsb" | "quake" | "ais" | "launch";
   id: string;
   latitude: number;
   longitude: number;

@@ -22,6 +22,9 @@ const layerArg = v.union(
   v.literal("firms"),
   v.literal("satellites"),
   v.literal("adsb"),
+  v.literal("quakes"),
+  v.literal("ais"),
+  v.literal("launches"),
 );
 
 export const getSnapshot = query({
@@ -62,7 +65,13 @@ export const getSnapshot = query({
             ? "NASA FIRMS VIIRS NRT — no snapshot yet"
             : args.layer === "adsb"
               ? "adsb.lol military ADS-B — no snapshot yet"
-              : "CelesTrak GP/OMM — no snapshot yet",
+              : args.layer === "quakes"
+                ? "USGS M2.5+ earthquakes — no snapshot yet"
+                : args.layer === "ais"
+                  ? "Open Waters AIS — no snapshot yet"
+                  : args.layer === "launches"
+                    ? "Launch Library 2 — no snapshot yet"
+                    : "CelesTrak GP/OMM — no snapshot yet",
       };
     }
 

@@ -12,16 +12,28 @@ export function MilitaryHud({
   firmsCount,
   satCount,
   adsbCount,
+  quakeCount,
+  aisCount,
+  launchCount,
   firmsStatus,
   satStatus,
   adsbStatus,
+  quakeStatus,
+  aisStatus,
+  launchStatus,
 }: {
   firmsCount: number;
   satCount: number;
   adsbCount: number;
+  quakeCount: number;
+  aisCount: number;
+  launchCount: number;
   firmsStatus: string;
   satStatus: string;
   adsbStatus: string;
+  quakeStatus: string;
+  aisStatus: string;
+  launchStatus: string;
 }) {
   const { filters, selectedContact, selectedEventId } = useDashboard();
   const overview = useQuery(api.events.overview, {
@@ -72,6 +84,15 @@ export function MilitaryHud({
       </span>
       <span className="text-[#fbbf24]" title={adsbStatus}>
         ADS-B MIL {adsbCount}
+      </span>
+      <span className="text-[#22d3ee]" title={aisStatus}>
+        AIS {aisCount}
+      </span>
+      <span className="text-[#fb7185]" title={quakeStatus}>
+        USGS {quakeCount}
+      </span>
+      <span className="text-[#c4b5fd]" title={launchStatus}>
+        LL2 {launchCount}
       </span>
       <span className="text-[var(--text-faint)] ml-auto">
         SUBJECT {subject}

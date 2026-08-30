@@ -27,6 +27,20 @@ crons.interval(
   { layer: "adsb" },
 );
 
+crons.interval(
+  "AIS theater vessels",
+  { minutes: 5 },
+  internal.providers.fetchLayers.refresh,
+  { layer: "ais" },
+);
+
+crons.interval(
+  "USGS earthquake overlay",
+  { minutes: 15 },
+  internal.providers.fetchLayers.refresh,
+  { layer: "quakes" },
+);
+
 // X OSINT polling is intentionally NOT on a Convex cron.
 // It only runs from the logged-in client while the app is open
 // (see components/dashboard/XOsintPoller.tsx — every 30 minutes).

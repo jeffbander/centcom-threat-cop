@@ -10,11 +10,14 @@ export const ANALYST_LAYERS = [
   "firms",
   "satellites",
   "adsb",
+  "quakes",
+  "ais",
+  "launches",
 ] as const;
 export type AnalystLayerKey = (typeof ANALYST_LAYERS)[number];
 
 export const LOADED_DATA_COVERAGE_NOTE =
-  "loaded-data-only — answers cover currently loaded events, FIRMS, satellite, and ADS-B records, not global completeness";
+  "loaded-data-only — answers cover currently loaded events, FIRMS, satellite, ADS-B, AIS, USGS, and launch records, not global completeness";
 
 export type AnalystRecord = {
   layerKey: AnalystLayerKey;

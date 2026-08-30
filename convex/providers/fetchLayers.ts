@@ -1,5 +1,5 @@
 /**
- * Fetch NASA FIRMS CSV and CelesTrak GP/OMM into layerSnapshots.
+ * Fetch NASA FIRMS, TLEs, ADS-B, USGS, AIS, and Launch Library into layerSnapshots.
  * Contacts only — never upserted as events.
  */
 
@@ -12,6 +12,14 @@ import {
   resolveFirmsSourceState,
 } from "../lib/firms";
 import { parseAdsbLol } from "../lib/adsb";
+import { parseUsgsGeojson } from "../lib/quakes";
+import {
+  AIS_THEATER_BBOXES,
+  mergeAisContacts,
+  parseOpenWatersVessels,
+  type AisContact,
+} from "../lib/ais";
+import { parseLaunchLibrary } from "../lib/launches";
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
 const FETCH_TIMEOUT_MS = 8_000;
@@ -363,6 +371,157 @@ async function refreshSatellites(ctx: ActionCtx) {
   });
 }
 
+async function writeLayer(
+  ctx: ActionCtx,
+  args: {
+    layer: LayerId;
+    now: number;
+    status: "LIVE" | "STALE" | "KEY_REQUIRED" | "UNAVAILABLE";
+    records: unknown[];
+    provenance: string;
+    errorSummary?: string;
+  },
+) {
+  await ctx.runMutation(internal.layers.replaceSnapshot, {
+    layer: args.layer,
+    fetchedAt: args.now,
+    status: args.status,
+    recordsJson: JSON.stringify(args.records),
+    recordsReceived: args.records.length,
+    errorSummary: args.errorSummary,
+    provenance: args.provenance,
+  });
+}
+
+async function refreshQuakes(ctx: ActionCtx) {
+  const now = Date.now();
+  const provenance =
+    "USGS M2.5+ earthquakes (24h GeoJSON) — public detections, not an alert";
+  try {
+    const res = await fetchRaw(
+      "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson",
+      { timeoutMs: 15_000, maxBytes: 4_000_000, accept: "application/json" },
+    );
+    if (!res.ok) {
+      await writeLayer(ctx, {
+        layer: "quakes",
+        now,
+        status: "UNAVAILABLE",
+        records: [],
+        provenance,
+        errorSummary: `USGS HTTP ${res.status}`,
+      });
+      return;
+    }
+    const contacts = parseUsgsGeojson(JSON.parse(res.text) as unknown);
+    await writeLayer(ctx, {
+      layer: "quakes",
+      now,
+      status: contacts.length > 0 ? "LIVE" : "UNAVAILABLE",
+      records: contacts,
+      provenance,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
+    await writeLayer(ctx, {
+      layer: "quakes",
+      now,
+      status: "UNAVAILABLE",
+      records: [],
+      provenance,
+      errorSummary: message,
+    });
+  }
+}
+
+async function refreshAis(ctx: ActionCtx) {
+  const now = Date.now();
+  const provenance =
+    "Open Waters AIS (ais.openwaters.io) · volunteer/gov receivers, not targeting data";
+  const batches: AisContact[][] = [];
+  const errors: string[] = [];
+  try {
+    for (const box of AIS_THEATER_BBOXES) {
+      const url = `https://ais.openwaters.io/v1/vessels?bbox=${box.bbox}`;
+      try {
+        const res = await fetchRaw(url, {
+          timeoutMs: 12_000,
+          maxBytes: 4_000_000,
+          accept: "application/geo+json, application/json",
+        });
+        if (!res.ok) {
+          errors.push(`${box.id}: HTTP ${res.status}`);
+          continue;
+        }
+        batches.push(parseOpenWatersVessels(JSON.parse(res.text) as unknown, 90));
+      } catch (err) {
+        const message = err instanceof Error ? err.message.slice(0, 80) : "error";
+        errors.push(`${box.id}: ${message}`);
+      }
+    }
+    const contacts = mergeAisContacts(batches);
+    await writeLayer(ctx, {
+      layer: "ais",
+      now,
+      status: contacts.length > 0 ? "LIVE" : "UNAVAILABLE",
+      records: contacts,
+      provenance,
+      errorSummary: errors.length ? errors.join("; ").slice(0, 400) : undefined,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
+    await writeLayer(ctx, {
+      layer: "ais",
+      now,
+      status: "UNAVAILABLE",
+      records: [],
+      provenance,
+      errorSummary: message,
+    });
+  }
+}
+
+async function refreshLaunches(ctx: ActionCtx) {
+  const now = Date.now();
+  const provenance =
+    "Launch Library 2 (The Space Devs) · upcoming pads, not range safety";
+  try {
+    const res = await fetchRaw(
+      "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=16&mode=detailed",
+      { timeoutMs: 20_000, maxBytes: 2_000_000, accept: "application/json" },
+    );
+    if (!res.ok) {
+      await writeLayer(ctx, {
+        layer: "launches",
+        now,
+        status: "UNAVAILABLE",
+        records: [],
+        provenance,
+        errorSummary: `LL2 HTTP ${res.status}`,
+      });
+      return;
+    }
+    const contacts = parseLaunchLibrary(JSON.parse(res.text) as unknown);
+    await writeLayer(ctx, {
+      layer: "launches",
+      now,
+      status: contacts.length > 0 ? "LIVE" : "UNAVAILABLE",
+      records: contacts,
+      provenance,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
+    await writeLayer(ctx, {
+      layer: "launches",
+      now,
+      status: "UNAVAILABLE",
+      records: [],
+      provenance,
+      errorSummary: message,
+    });
+  }
+}
+
 async function refreshAdsb(ctx: ActionCtx) {
   const now = Date.now();
   const provenance =
@@ -414,16 +573,24 @@ export const refresh = internalAction({
       v.literal("firms"),
       v.literal("satellites"),
       v.literal("adsb"),
+      v.literal("quakes"),
+      v.literal("ais"),
+      v.literal("launches"),
       v.literal("all"),
     ),
   },
   handler: async (ctx, args) => {
     const layers: LayerId[] =
-      args.layer === "all" ? ["firms", "satellites", "adsb"] : [args.layer];
+      args.layer === "all"
+        ? ["firms", "satellites", "adsb", "quakes", "ais", "launches"]
+        : [args.layer];
     for (const layer of layers) {
       if (layer === "firms") await refreshFirms(ctx);
       else if (layer === "satellites") await refreshSatellites(ctx);
-      else await refreshAdsb(ctx);
+      else if (layer === "adsb") await refreshAdsb(ctx);
+      else if (layer === "quakes") await refreshQuakes(ctx);
+      else if (layer === "ais") await refreshAis(ctx);
+      else await refreshLaunches(ctx);
     }
     return { ok: true, layer: args.layer };
   },

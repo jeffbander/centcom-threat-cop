@@ -93,7 +93,13 @@ export function ContactSubjectPanel() {
       ? "FIRMS"
       : selectedContact.kind === "adsb"
         ? "ADS-B"
-        : "Satellite";
+        : selectedContact.kind === "ais"
+          ? "AIS"
+          : selectedContact.kind === "quake"
+            ? "USGS"
+            : selectedContact.kind === "launch"
+              ? "LAUNCH"
+              : "Satellite";
 
   return (
     <section

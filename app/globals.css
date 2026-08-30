@@ -358,9 +358,24 @@ body {
 
 .gsm-force-icon,
 .gsm-sat-icon,
-.gsm-adsb-icon {
+.gsm-adsb-icon,
+.gsm-ais-icon,
+.gsm-launch-icon {
   background: transparent !important;
   border: none !important;
+}
+
+.gsm-nearby-board {
+  position: absolute;
+  top: 12px;
+  left: 220px;
+  z-index: 800;
+  width: 200px;
+  max-height: 46%;
+  overflow: auto;
+  background: rgba(8, 12, 18, 0.9);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
 .gsm-class-strip {

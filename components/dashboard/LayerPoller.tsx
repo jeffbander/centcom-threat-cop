@@ -18,8 +18,10 @@ export function LayerPoller() {
   }, [refresh]);
 
   useEffect(() => {
+    let tick = 0;
     const id = setInterval(() => {
-      void refresh({ layer: "adsb" }).catch(() => {
+      const layer = tick++ % 2 === 0 ? "adsb" : "ais";
+      void refresh({ layer }).catch(() => {
         /* rate-limit is fine — cron still refreshes */
       });
     }, 90_000);

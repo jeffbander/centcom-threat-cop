@@ -40,6 +40,9 @@ import {
 } from "@/lib/showOverlays";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import type { AdsbContact } from "@/convex/lib/adsb";
+import type { QuakeContact } from "@/convex/lib/quakes";
+import type { AisContact } from "@/convex/lib/ais";
+import type { LaunchContact } from "@/convex/lib/launches";
 import type { SelectedContact } from "./DashboardContext";
 import type { GroundTrack } from "@/lib/sgp4";
 import { destinationPoint } from "@/lib/spatialJoin";
@@ -470,6 +473,242 @@ function AdsbLayer({
   );
 }
 
+function shipIcon(
+  headingDeg: number | null,
+  kind: string,
+  selected: boolean,
+) {
+  const color =
+    kind === "military" ? "#fbbf24" : kind === "tanker" ? "#fb923c" : "#22d3ee";
+  const rot = headingDeg ?? 0;
+  return L.divIcon({
+    className: "gsm-ais-icon",
+    html: `<div style="transform:rotate(${rot}deg);width:14px;height:14px">
+      <div style="width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:12px solid ${
+        selected ? "#e8eef6" : color
+      };margin-left:3px;filter:drop-shadow(0 0 4px ${color})"></div>
+    </div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
+function launchIcon(selected: boolean) {
+  const color = selected ? "#e8eef6" : "#c4b5fd";
+  return L.divIcon({
+    className: "gsm-launch-icon",
+    html: `<div style="width:14px;height:14px;color:${color};font:700 12px/14px ui-monospace,monospace;text-shadow:0 0 6px #000">▲</div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+}
+
+function AisLayer({
+  contacts,
+  selectedId,
+  onSelect,
+  provenance,
+}: {
+  contacts: AisContact[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+}) {
+  return (
+    <>
+      {contacts.map((v) => {
+        const selected = selectedId === v.id;
+        const hdg = v.headingDeg ?? v.cogDeg;
+        const tick =
+          hdg != null ? destinationPoint(v, hdg, selected ? 18 : 10) : null;
+        const color =
+          v.shipTypeLabel === "military"
+            ? "#fbbf24"
+            : v.shipTypeLabel === "tanker"
+              ? "#fb923c"
+              : "#22d3ee";
+        return (
+          <Fragment key={v.id}>
+            {tick ? (
+              <Polyline
+                positions={[
+                  [v.latitude, v.longitude],
+                  [tick.latitude, tick.longitude],
+                ]}
+                pathOptions={{
+                  color,
+                  weight: selected ? 2 : 1,
+                  opacity: selected ? 0.9 : 0.5,
+                }}
+              />
+            ) : null}
+            <Marker
+              position={[v.latitude, v.longitude]}
+              icon={shipIcon(hdg, v.shipTypeLabel, selected)}
+              zIndexOffset={selected ? 940 : 680}
+              eventHandlers={{
+                click: () =>
+                  onSelect({
+                    kind: "ais",
+                    id: v.id,
+                    latitude: v.latitude,
+                    longitude: v.longitude,
+                    title: v.name,
+                    subtitle: `${v.shipTypeLabel.toUpperCase()} · MMSI ${v.mmsi} · AIS`,
+                    details: [
+                      { label: "MMSI", value: v.mmsi },
+                      { label: "Type", value: v.shipTypeLabel },
+                      {
+                        label: "SOG",
+                        value: v.sogKt != null ? `${v.sogKt.toFixed(1)} kt` : "—",
+                      },
+                      {
+                        label: "HDG",
+                        value: hdg != null ? `${Math.round(hdg)}°` : "—",
+                      },
+                    ],
+                    provenance,
+                  }),
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -8]}>
+                <div className="text-xs">
+                  <div className="font-bold">{v.name}</div>
+                  <div className="opacity-80">
+                    {v.shipTypeLabel} · MMSI {v.mmsi}
+                    {v.sogKt != null ? ` · ${v.sogKt.toFixed(0)} kt` : ""}
+                  </div>
+                </div>
+              </Tooltip>
+            </Marker>
+          </Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+function QuakesLayer({
+  contacts,
+  selectedId,
+  onSelect,
+  provenance,
+}: {
+  contacts: QuakeContact[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+}) {
+  return (
+    <>
+      {contacts.map((q) => {
+        const selected = selectedId === q.id;
+        const fill =
+          q.magnitude >= 6 ? "#ef4444" : q.magnitude >= 4.5 ? "#fb7185" : "#fbbf24";
+        return (
+          <CircleMarker
+            key={q.id}
+            center={[q.latitude, q.longitude]}
+            radius={selected ? 10 : 4 + q.magnitude}
+            pathOptions={{
+              color: selected ? "#e8eef6" : fill,
+              weight: selected ? 2 : 1,
+              fillColor: fill,
+              fillOpacity: 0.35,
+            }}
+            eventHandlers={{
+              click: () =>
+                onSelect({
+                  kind: "quake",
+                  id: q.id,
+                  latitude: q.latitude,
+                  longitude: q.longitude,
+                  title: `M${q.magnitude.toFixed(1)} ${q.place}`,
+                  subtitle: "USGS earthquake · contact, not an alert",
+                  details: [
+                    { label: "Mag", value: q.magnitude.toFixed(1) },
+                    { label: "Depth", value: `${q.depthKm.toFixed(0)} km` },
+                    {
+                      label: "When",
+                      value: q.occurredAt
+                        ? new Date(q.occurredAt).toISOString().slice(0, 16) + "Z"
+                        : "—",
+                    },
+                    { label: "Tsunami", value: q.tsunami ? "flag" : "no" },
+                  ],
+                  provenance,
+                }),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -4]}>
+              <div className="text-xs">
+                <div className="font-semibold">M{q.magnitude.toFixed(1)}</div>
+                <div className="opacity-80">{q.place}</div>
+              </div>
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
+}
+
+function LaunchesLayer({
+  contacts,
+  selectedId,
+  onSelect,
+  provenance,
+}: {
+  contacts: LaunchContact[];
+  selectedId: string | null;
+  onSelect: (c: SelectedContact) => void;
+  provenance: string;
+}) {
+  return (
+    <>
+      {contacts.map((ln) => {
+        const selected = selectedId === ln.id;
+        return (
+          <Marker
+            key={ln.id}
+            position={[ln.latitude, ln.longitude]}
+            icon={launchIcon(selected)}
+            zIndexOffset={selected ? 960 : 720}
+            eventHandlers={{
+              click: () =>
+                onSelect({
+                  kind: "launch",
+                  id: ln.id,
+                  latitude: ln.latitude,
+                  longitude: ln.longitude,
+                  title: ln.name,
+                  subtitle: `${ln.status} · ${ln.rocket} · LL2`,
+                  details: [
+                    { label: "NET", value: new Date(ln.netAt).toISOString().slice(0, 16) + "Z" },
+                    { label: "Pad", value: ln.pad },
+                    { label: "Site", value: ln.location },
+                    { label: "LSP", value: ln.provider },
+                    { label: "Status", value: ln.status },
+                  ],
+                  provenance,
+                }),
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -8]}>
+              <div className="text-xs max-w-[220px]">
+                <div className="font-bold">{ln.name}</div>
+                <div className="opacity-80">
+                  {ln.status} · {ln.pad}
+                </div>
+              </div>
+            </Tooltip>
+          </Marker>
+        );
+      })}
+    </>
+  );
+}
+
 function FirmsLayer({
   detections,
   selectedId,
@@ -549,14 +788,23 @@ export default function LeafletMapCanvas({
   showOsintInfra = true,
   showFirms = true,
   showAdsb = true,
+  showQuakes = true,
+  showAis = true,
+  showLaunches = true,
   firmsDetections = [],
   liveSatellites = [],
   adsbContacts = [],
+  quakeContacts = [],
+  aisContacts = [],
+  launchContacts = [],
   selectedContact = null,
   onSelectContact,
   firmsProvenance = "NASA FIRMS",
   satProvenance = "CelesTrak GP · SGP4",
   adsbProvenance = "adsb.lol military ADS-B",
+  quakeProvenance = "USGS earthquakes",
+  aisProvenance = "Open Waters AIS",
+  launchProvenance = "Launch Library 2",
   mapFocus = null,
   onCursor,
 }: {
@@ -570,14 +818,23 @@ export default function LeafletMapCanvas({
   showOsintInfra?: boolean;
   showFirms?: boolean;
   showAdsb?: boolean;
+  showQuakes?: boolean;
+  showAis?: boolean;
+  showLaunches?: boolean;
   firmsDetections?: FirmsDetection[];
   liveSatellites?: LiveSatellite[];
   adsbContacts?: AdsbContact[];
+  quakeContacts?: QuakeContact[];
+  aisContacts?: AisContact[];
+  launchContacts?: LaunchContact[];
   selectedContact?: SelectedContact | null;
   onSelectContact?: (c: SelectedContact) => void;
   firmsProvenance?: string;
   satProvenance?: string;
   adsbProvenance?: string;
+  quakeProvenance?: string;
+  aisProvenance?: string;
+  launchProvenance?: string;
   mapFocus?: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
   onCursor?: (lat: number, lon: number) => void;
 }) {
@@ -675,6 +932,33 @@ export default function LeafletMapCanvas({
           selectedId={selectedContact?.kind === "adsb" ? selectedContact.id : null}
           onSelect={onSelectContact}
           provenance={adsbProvenance}
+        />
+      )}
+
+      {showAis && onSelectContact && (
+        <AisLayer
+          contacts={aisContacts}
+          selectedId={selectedContact?.kind === "ais" ? selectedContact.id : null}
+          onSelect={onSelectContact}
+          provenance={aisProvenance}
+        />
+      )}
+
+      {showQuakes && onSelectContact && (
+        <QuakesLayer
+          contacts={quakeContacts}
+          selectedId={selectedContact?.kind === "quake" ? selectedContact.id : null}
+          onSelect={onSelectContact}
+          provenance={quakeProvenance}
+        />
+      )}
+
+      {showLaunches && onSelectContact && (
+        <LaunchesLayer
+          contacts={launchContacts}
+          selectedId={selectedContact?.kind === "launch" ? selectedContact.id : null}
+          onSelect={onSelectContact}
+          provenance={launchProvenance}
         />
       )}
 
