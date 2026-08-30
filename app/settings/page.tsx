@@ -194,6 +194,24 @@ function SettingsForm({
           </div>
         </fieldset>
 
+        <fieldset className="border border-[var(--border)] rounded p-4 text-sm text-[var(--text-muted)]">
+          <legend className="px-1 text-[11px] uppercase tracking-[0.14em] font-mono text-[var(--accent)]">
+            AOR and thermals
+          </legend>
+          <p className="mt-2">
+            <strong className="text-[var(--text)]">AOR</strong> is the area of
+            responsibility — the watch box on the COP. Click the theater name to
+            jump the map. Live event filters (category, severity, region, time)
+            are under Settings on the COP, not this page.
+          </p>
+          <p className="mt-2">
+            <strong className="text-[#f97316]">Thermals</strong> are NASA FIRMS
+            heat pixels (fires, flares, explosions). Public heat, not targeting.
+            FRP is megawatts. Click a MW value to inspect. 24h vs prior 24h is
+            whether heat is up or down vs yesterday.
+          </p>
+        </fieldset>
+
         <fieldset className="border border-[var(--border)] rounded p-4">
           <legend className="px-1 text-[11px] uppercase tracking-[0.14em] font-mono text-[var(--accent)]">
             Preferred view

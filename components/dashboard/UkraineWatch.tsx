@@ -13,6 +13,7 @@ import { firmsAorDelta } from "@/lib/firmsDelta";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import { useDashboard } from "./DashboardContext";
 import { formatRelativeTime } from "@/lib/format";
+import { AorGuide } from "./AorGuide";
 
 export function UkraineWatch() {
   return (
@@ -56,6 +57,7 @@ export function AorWatchRail() {
       <p className="px-2 py-1.5 border-b border-[var(--border)] text-[9px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)]">
         AOR watch
       </p>
+      <AorGuide compact />
       <UkraineWatch />
       <MiddleEastWatch />
     </aside>
@@ -202,7 +204,7 @@ function AorWatch({
               key={d.id}
               type="button"
               className="hover:underline mr-2"
-              onClick={() =>
+              onClick={() => {
                 setSelectedContact({
                   kind: "firms",
                   id: d.id,
@@ -218,8 +220,9 @@ function AorWatch({
                     },
                   ],
                   provenance: firmsSnap?.provenance ?? "NASA FIRMS",
-                })
-              }
+                });
+                requestMapFocus(d.latitude, d.longitude, 8);
+              }}
             >
               {i > 0 ? "· " : ""}
               {d.frp.toFixed(0)} MW

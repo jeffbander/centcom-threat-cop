@@ -21,6 +21,8 @@ export function CopHotkeys() {
     requestMapFocus,
     setSelectedContact,
     setSelectedEventId,
+    settingsOpen,
+    setSettingsOpen,
   } = useDashboard();
 
   useEffect(() => {
@@ -28,6 +30,10 @@ export function CopHotkeys() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isTypingTarget(e.target)) return;
       if (e.key === "Escape") {
+        if (settingsOpen) {
+          setSettingsOpen(false);
+          return;
+        }
         setSelectedContact(null);
         setSelectedEventId(null);
         return;
@@ -44,7 +50,13 @@ export function CopHotkeys() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [requestMapFocus, setSelectedContact, setSelectedEventId]);
+  }, [
+    requestMapFocus,
+    setSelectedContact,
+    setSelectedEventId,
+    settingsOpen,
+    setSettingsOpen,
+  ]);
 
   return null;
 }

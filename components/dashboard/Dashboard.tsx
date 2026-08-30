@@ -9,7 +9,7 @@ import {
   type FilterState,
 } from "./DashboardContext";
 import { Header } from "./Header";
-import { FilterRail } from "./FilterRail";
+import { CopSettingsPanel } from "./CopSettingsPanel";
 import { OverviewBar } from "./OverviewBar";
 import { EventMap } from "./EventMap";
 import { IntelligenceFeed } from "./IntelligenceFeed";
@@ -219,7 +219,6 @@ function DashboardInner() {
       </div>
       {overlays.newsWire && <NewsTicker />}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-        <FilterRail />
         <AorWatchRail />
         <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0">
           <EventMap
@@ -298,6 +297,7 @@ function DashboardInner() {
           </div>
         </div>
       </div>
+      <CopSettingsPanel />
       <EventDetailPanel />
       <ClassificationStrip position="bottom" />
     </div>

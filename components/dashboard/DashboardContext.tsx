@@ -45,6 +45,8 @@ export type DashboardContextValue = {
   setPreferredView: (v: PreferredView) => void;
   detailOpen: boolean;
   setDetailOpen: (open: boolean) => void;
+  settingsOpen: boolean;
+  setSettingsOpen: (open: boolean) => void;
 };
 
 const DEFAULT_FILTERS: FilterState = {
@@ -78,6 +80,7 @@ export function DashboardProvider({
     initial?.preferredView ?? "split",
   );
   const [detailOpen, setDetailOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [mapFocus, setMapFocus] = useState<{
     latitude: number;
     longitude: number;
@@ -120,6 +123,8 @@ export function DashboardProvider({
       setPreferredView,
       detailOpen,
       setDetailOpen,
+      settingsOpen,
+      setSettingsOpen,
     }),
     [
       filters,
@@ -130,6 +135,7 @@ export function DashboardProvider({
       mapFocus,
       preferredView,
       detailOpen,
+      settingsOpen,
     ],
   );
 

@@ -33,18 +33,11 @@ export function FilterRail() {
   };
 
   return (
-    <aside
-      className="w-full lg:w-44 shrink-0 border-r border-[var(--border)] bg-[var(--bg-panel)] gsm-scroll overflow-y-auto p-2 flex flex-col gap-3 text-[12px]"
-      aria-label="Filters"
-    >
-      <div className="pb-1.5 border-b border-[var(--border)]">
-        <p className="text-[9px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)]">
-          Filters
-        </p>
-        <p className="mt-1 text-[9px] font-mono text-[var(--text-faint)] leading-snug">
-          Keys 1–5 theaters · 0 world · Esc clear
-        </p>
-      </div>
+    <div className="flex flex-col gap-4 text-[12px]" aria-label="Event filters">
+      <p className="text-[11px] text-[var(--text-muted)] leading-snug">
+        Filters the event list and sitrep. Map layers (FIRMS, ADS-B, AIS) stay
+        on unless you turn them off in Layers.
+      </p>
       <div>
         <h2 className="text-[11px] uppercase tracking-[0.16em] font-mono text-[var(--accent)] mb-2">
           Categories
@@ -169,10 +162,10 @@ export function FilterRail() {
           resetFilters();
           emitFilter("reset");
         }}
-        className="mt-auto text-sm px-3 py-1.5 rounded-[var(--radius)] border border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)]"
+        className="text-sm px-3 py-1.5 rounded-[var(--radius)] border border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)] self-start"
       >
         Reset filters
       </button>
-    </aside>
+    </div>
   );
 }

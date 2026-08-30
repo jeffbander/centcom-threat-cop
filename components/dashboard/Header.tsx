@@ -10,7 +10,7 @@ import { useDashboard } from "./DashboardContext";
 import { trackProductEvent } from "@/lib/analytics";
 
 export function Header() {
-  const { filters, setFilters } = useDashboard();
+  const { filters, setFilters, setSettingsOpen } = useDashboard();
   const freshness = useQuery(api.ingestion.freshness);
   const requestRefresh = useMutation(api.ingestion.requestRefresh);
   const requestLayerRefresh = useMutation(api.layers.requestRefresh);
@@ -124,12 +124,13 @@ export function Header() {
         >
           Bookmarks
         </Link>
-        <Link
-          href="/settings"
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(true)}
           className="px-2 py-1 rounded text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--bg-hover)]"
         >
           Settings
-        </Link>
+        </button>
         <button
           type="button"
           onClick={() => void onRefresh()}
