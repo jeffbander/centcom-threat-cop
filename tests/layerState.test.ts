@@ -45,6 +45,18 @@ describe("presentLayerSnapshotStatus", () => {
     expect(status).toBe("STALE");
   });
 
+  it("keeps a stored LIVE FIRMS snapshot LIVE when MAP_KEY is unset", () => {
+    expect(
+      presentLayerSnapshotStatus({
+        layer: "firms",
+        storedStatus: "LIVE",
+        now,
+        fetchedAt: now - 60_000,
+        keyPresent: false,
+      }),
+    ).toBe("LIVE");
+  });
+
   it("ages ADS-B LIVE to STALE after three minutes", () => {
     expect(
       presentLayerSnapshotStatus({

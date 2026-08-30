@@ -32,8 +32,8 @@ export function isLayerId(value: string): value is LayerId {
 
 /**
  * Resolve overlay freshness from credentials + fetch outcome + age.
- * Empty detections with a working key can still be LIVE (no fires).
- * Missing/invalid keys are KEY_REQUIRED, never LIVE, never silent empty-as-zero.
+ * Empty detections with a working source can still be LIVE (no fires).
+ * Invalid MAP_KEY is KEY_REQUIRED. Public FIRMS CSV needs no key.
  */
 export function resolveLayerSourceState(input: {
   layer: LayerId;
@@ -44,10 +44,8 @@ export function resolveLayerSourceState(input: {
   fetchFailed?: boolean;
   staleAfterMs?: number;
 }): LayerSourceState {
-  if (input.layer === "firms") {
-    if (input.keyInvalid || input.keyPresent === false) {
-      return "KEY_REQUIRED";
-    }
+  if (input.layer === "firms" && input.keyInvalid) {
+    return "KEY_REQUIRED";
   }
   if (input.fetchFailed) return "UNAVAILABLE";
   if (input.fetchedAt == null || !Number.isFinite(input.fetchedAt)) {
@@ -74,11 +72,13 @@ export function presentLayerSnapshotStatus(input: {
   if (input.storedStatus === "KEY_REQUIRED") return "KEY_REQUIRED";
   if (input.storedStatus === "UNAVAILABLE") return "UNAVAILABLE";
   if (input.storedStatus === "STALE") return "STALE";
+  // Stored LIVE may age to STALE. Do not demote to KEY_REQUIRED just because
+  // FIRMS_MAP_KEY is unset — public 24h CSV does not use a MAP_KEY.
   return resolveLayerSourceState({
     layer: input.layer,
     now: input.now,
     fetchedAt: input.fetchedAt,
-    keyPresent: input.keyPresent,
+    keyPresent: true,
     staleAfterMs: input.staleAfterMs,
   });
 }

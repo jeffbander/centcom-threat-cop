@@ -40,6 +40,9 @@ const securityHeaders = [
         "https://*.basemaps.cartocdn.com",
         "https://*.cartocdn.com",
         "https://*.tile.openstreetmap.org",
+        "https://server.arcgisonline.com",
+        "https://services.arcgisonline.com",
+        "https://*.arcgisonline.com",
       ].join(" "),
       "font-src 'self' data:",
       [
@@ -53,6 +56,9 @@ const securityHeaders = [
         "https://challenges.cloudflare.com",
         "https://*.basemaps.cartocdn.com",
         "https://*.cartocdn.com",
+        "https://server.arcgisonline.com",
+        "https://services.arcgisonline.com",
+        "https://*.arcgisonline.com",
         // Operator IP / coarse geo for satellite-link status
         "https://api.ipify.org",
         "https://ipapi.co",

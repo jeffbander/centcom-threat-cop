@@ -57,14 +57,22 @@ describe("parseFirmsCsv", () => {
 describe("resolveFirmsSourceState", () => {
   const now = Date.parse("2026-08-20T12:00:00Z");
 
-  it("yields KEY REQUIRED when MAP_KEY is missing (not LIVE, not empty-as-zero)", () => {
+  it("treats a successful public (keyless) fetch as LIVE", () => {
     const state = resolveFirmsSourceState({
       mapKey: "",
       now,
       fetchedAt: now,
     });
-    expect(state).toBe("KEY_REQUIRED");
-    expect(state).not.toBe("LIVE");
+    expect(state).toBe("LIVE");
+  });
+
+  it("yields UNAVAILABLE when nothing has been fetched yet", () => {
+    const state = resolveFirmsSourceState({
+      mapKey: "",
+      now,
+      fetchedAt: null,
+    });
+    expect(state).toBe("UNAVAILABLE");
   });
 
   it("yields KEY REQUIRED for an invalid MAP_KEY response", () => {

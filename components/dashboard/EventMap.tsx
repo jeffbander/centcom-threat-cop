@@ -181,7 +181,7 @@ export function EventMap({
         </span>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <span className="text-[var(--text-faint)] font-mono text-[10px]">
-            CARTO / OSM
+            ESRI imagery
           </span>
           {showAois && (
             <span className="text-[var(--high)] font-mono text-[10px] uppercase">

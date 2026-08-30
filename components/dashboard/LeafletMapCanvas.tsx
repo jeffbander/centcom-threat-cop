@@ -604,10 +604,15 @@ export default function LeafletMapCanvas({
       scrollWheelZoom
     >
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · overlays sensitive'
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        subdomains="abcd"
+        attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics · overlays sensitive'
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         maxZoom={19}
+      />
+      <TileLayer
+        attribution=""
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+        maxZoom={19}
+        opacity={0.85}
       />
 
       <FitOrFocus
