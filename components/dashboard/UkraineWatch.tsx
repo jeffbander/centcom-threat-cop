@@ -3,17 +3,70 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { inUkraineAor, looksUkraineRelated } from "@/lib/theaters";
-import { firmsUkraineDelta } from "@/lib/firmsDelta";
+import {
+  inMiddleEastAor,
+  inUkraineAor,
+  looksMiddleEastRelated,
+  looksUkraineRelated,
+} from "@/lib/theaters";
+import { firmsAorDelta } from "@/lib/firmsDelta";
 import type { FirmsDetection } from "@/convex/lib/firms";
 import { useDashboard } from "./DashboardContext";
 import { formatRelativeTime } from "@/lib/format";
 
-/**
- * Ukraine AOR watch — public events + FIRMS + ADS-B + AIS in the box.
- * Not troop GPS and not a targeting feed.
- */
 export function UkraineWatch() {
+  return (
+    <AorWatch
+      label="Ukraine AOR"
+      subtitle="Ukraine AOR · last 24h"
+      aria="Ukraine AOR watch"
+      toneClass="text-[var(--critical)]"
+      focusLat={48.25}
+      focusLon={31.25}
+      focusZoom={5}
+      inAor={inUkraineAor}
+      related={looksUkraineRelated}
+    />
+  );
+}
+
+export function MiddleEastWatch() {
+  return (
+    <AorWatch
+      label="Middle East AOR"
+      subtitle="Levant / Gulf / Red Sea · last 24h"
+      aria="Middle East AOR watch"
+      toneClass="text-[var(--high)]"
+      focusLat={27.5}
+      focusLon={45.0}
+      focusZoom={4}
+      inAor={inMiddleEastAor}
+      related={looksMiddleEastRelated}
+    />
+  );
+}
+
+function AorWatch({
+  label,
+  subtitle,
+  aria,
+  toneClass,
+  focusLat,
+  focusLon,
+  focusZoom,
+  inAor,
+  related,
+}: {
+  label: string;
+  subtitle: string;
+  aria: string;
+  toneClass: string;
+  focusLat: number;
+  focusLon: number;
+  focusZoom: number;
+  inAor: (lat: number, lon: number) => boolean;
+  related: (text: string) => boolean;
+}) {
   const { filters, setSelectedEventId, setSelectedContact, requestMapFocus } =
     useDashboard();
   const [now] = useState(() => Date.now());
@@ -33,8 +86,8 @@ export function UkraineWatch() {
   const stats = useMemo(() => {
     const evs = (events ?? []).filter(
       (e) =>
-        inUkraineAor(e.latitude, e.longitude) ||
-        looksUkraineRelated(`${e.headline} ${e.summary} ${e.region}`),
+        inAor(e.latitude, e.longitude) ||
+        related(`${e.headline} ${e.summary} ${e.region}`),
     );
     const crit = evs.filter((e) => e.severity === "critical").length;
     const high = evs.filter((e) => e.severity === "high").length;
@@ -45,7 +98,7 @@ export function UkraineWatch() {
       const d = r as FirmsDetection;
       return typeof d.id === "string" && Number.isFinite(d.latitude);
     });
-    const thermal = firmsUkraineDelta(firms, Date.now());
+    const thermal = firmsAorDelta(firms, Date.now(), inAor);
     const air = (Array.isArray(adsbSnap?.records) ? adsbSnap.records : []).filter(
       (r) => {
         if (!r || typeof r !== "object") return false;
@@ -53,7 +106,7 @@ export function UkraineWatch() {
         return (
           typeof a.latitude === "number" &&
           typeof a.longitude === "number" &&
-          inUkraineAor(a.latitude, a.longitude)
+          inAor(a.latitude, a.longitude)
         );
       },
     );
@@ -64,7 +117,7 @@ export function UkraineWatch() {
         return (
           typeof a.latitude === "number" &&
           typeof a.longitude === "number" &&
-          inUkraineAor(a.latitude, a.longitude)
+          inAor(a.latitude, a.longitude)
         );
       },
     );
@@ -76,7 +129,7 @@ export function UkraineWatch() {
       return (
         typeof a.latitude === "number" &&
         typeof a.longitude === "number" &&
-        inUkraineAor(a.latitude, a.longitude)
+        inAor(a.latitude, a.longitude)
       );
     });
     return {
@@ -93,20 +146,20 @@ export function UkraineWatch() {
       acled: acled.length,
       acledStatus: acledSnap?.status ?? "…",
     };
-  }, [events, firmsSnap, adsbSnap, aisSnap, acledSnap]);
+  }, [events, firmsSnap, adsbSnap, aisSnap, acledSnap, inAor, related]);
 
   return (
     <section
       className="px-2 py-1 border-b border-[var(--border)] bg-[#0a0c10] text-[10px] font-mono"
-      aria-label="Ukraine AOR watch"
+      aria-label={aria}
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <button
           type="button"
-          className="uppercase tracking-[0.14em] text-[var(--critical)] font-bold"
-          onClick={() => requestMapFocus(48.25, 31.25, 5)}
+          className={`uppercase tracking-[0.14em] font-bold ${toneClass}`}
+          onClick={() => requestMapFocus(focusLat, focusLon, focusZoom)}
         >
-          Ukraine AOR
+          {label}
         </button>
         <span className="text-[var(--critical)]">CRIT {stats.crit}</span>
         <span className="text-[var(--high)]">HIGH {stats.high}</span>
@@ -138,7 +191,7 @@ export function UkraineWatch() {
                   latitude: d.latitude,
                   longitude: d.longitude,
                   title: `FIRMS FRP ${d.frp.toFixed(1)} MW`,
-                  subtitle: "Ukraine AOR · last 24h",
+                  subtitle,
                   details: [
                     { label: "FRP", value: `${d.frp.toFixed(1)} MW` },
                     {

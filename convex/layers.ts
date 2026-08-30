@@ -79,7 +79,7 @@ export const getSnapshot = query({
                   : args.layer === "launches"
                     ? "Launch Library 2 — no snapshot yet"
                     : args.layer === "acled"
-                      ? "ACLED Ukraine — no snapshot yet"
+                      ? "ACLED Middle East + Ukraine — no snapshot yet"
                     : "CelesTrak GP/OMM — no snapshot yet",
       };
     }

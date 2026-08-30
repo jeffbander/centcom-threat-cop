@@ -27,6 +27,23 @@ export function inUkraineAor(lat: number, lon: number): boolean {
   );
 }
 
+/** Levant + Gulf + Red Sea + Iran box for CENTCOM overlays. */
+export const MIDDLE_EAST_AOR = {
+  minLat: 12,
+  maxLat: 38,
+  minLon: 32,
+  maxLon: 64,
+} as const;
+
+export function inMiddleEastAor(lat: number, lon: number): boolean {
+  return (
+    lat >= MIDDLE_EAST_AOR.minLat &&
+    lat <= MIDDLE_EAST_AOR.maxLat &&
+    lon >= MIDDLE_EAST_AOR.minLon &&
+    lon <= MIDDLE_EAST_AOR.maxLon
+  );
+}
+
 export function regionFromLatLon(lat: number, lon: number): RegionName {
   // Crude but deterministic operational regions for dashboard filters.
   if (lat < -60) return "Oceania";

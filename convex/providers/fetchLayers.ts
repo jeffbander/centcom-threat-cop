@@ -20,7 +20,7 @@ import {
   type AisContact,
 } from "../lib/ais";
 import { parseLaunchLibrary } from "../lib/launches";
-import { parseAcledPayload } from "../lib/acled";
+import { acledCountryQuery, parseAcledPayload } from "../lib/acled";
 import { resolveLayerSourceState, type LayerId } from "../lib/layerState";
 
 const FETCH_TIMEOUT_MS = 8_000;
@@ -570,7 +570,8 @@ async function acledAccessToken(): Promise<string | null> {
 
 async function refreshAcled(ctx: ActionCtx) {
   const now = Date.now();
-  const provenance = "ACLED Ukraine events (myACLED) · coded political violence";
+  const provenance =
+    "ACLED Middle East + Ukraine (myACLED) · coded political violence";
   const token = await acledAccessToken();
   if (!token) {
     await writeLayer(ctx, {
@@ -590,7 +591,8 @@ async function refreshAcled(ctx: ActionCtx) {
     .slice(0, 10);
   const url =
     `https://acleddata.com/api/acled/read?_format=json` +
-    `&country=Ukraine&event_date=${start}|${end}&event_date_where=BETWEEN&limit=500`;
+    `&${acledCountryQuery()}` +
+    `&event_date=${start}|${end}&event_date_where=BETWEEN&limit=500`;
   try {
     const res = await fetchRaw(url, {
       timeoutMs: 20_000,

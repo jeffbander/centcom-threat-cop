@@ -12,15 +12,16 @@ export type FirmsUkraineDelta = {
   hottest: FirmsDetection[];
 };
 
-export function firmsUkraineDelta(
+export function firmsAorDelta(
   detections: FirmsDetection[],
   now: number,
+  inAor: (lat: number, lon: number) => boolean,
 ): FirmsUkraineDelta {
   const aor = detections.filter(
     (d) =>
       Number.isFinite(d.latitude) &&
       Number.isFinite(d.longitude) &&
-      inUkraineAor(d.latitude, d.longitude),
+      inAor(d.latitude, d.longitude),
   );
   const last24 = aor
     .filter((d) => now - d.acquiredAt <= DAY_MS && now - d.acquiredAt >= 0)
@@ -37,4 +38,11 @@ export function firmsUkraineDelta(
     last24,
     hottest: last24.slice(0, 8),
   };
+}
+
+export function firmsUkraineDelta(
+  detections: FirmsDetection[],
+  now: number,
+): FirmsUkraineDelta {
+  return firmsAorDelta(detections, now, inUkraineAor);
 }

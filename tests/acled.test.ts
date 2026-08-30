@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAcledPayload } from "../convex/lib/acled";
+import { acledCountryQuery, parseAcledPayload } from "../convex/lib/acled";
 
 const fixture = {
   data: [
@@ -34,6 +34,14 @@ describe("parseAcledPayload", () => {
     expect(rows[0].location).toBe("Kharkiv");
     expect(rows[0].fatalities).toBe(4);
     expect(rows[0].latitude).toBeCloseTo(49.9935, 3);
+  });
+
+  it("builds an OR query covering Middle East and Ukraine", () => {
+    const q = acledCountryQuery();
+    expect(q).toContain("country=Iraq");
+    expect(q).toContain("country=Yemen");
+    expect(q).toContain("country=Ukraine");
+    expect(q).toContain(":OR:");
   });
 
   it("returns empty for malformed payloads", () => {

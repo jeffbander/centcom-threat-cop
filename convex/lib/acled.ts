@@ -22,6 +22,27 @@ export type AcledContact = {
 
 export const ACLED_MAX_CONTACTS = 400;
 
+/** CENTCOM-relevant countries. API uses country=X:OR:country=Y. */
+export const ACLED_COUNTRIES = [
+  "Iraq",
+  "Syria",
+  "Yemen",
+  "Israel",
+  "Palestine",
+  "Lebanon",
+  "Iran",
+  "Saudi Arabia",
+  "Jordan",
+  "Egypt",
+  "Ukraine",
+] as const;
+
+export function acledCountryQuery(): string {
+  return ACLED_COUNTRIES.map((c) => `country=${encodeURIComponent(c)}`).join(
+    ":OR:",
+  );
+}
+
 type AcledRow = {
   event_id_cnty?: string;
   event_date?: string;

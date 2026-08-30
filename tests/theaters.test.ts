@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   THEATER_MISSIONS,
+  inMiddleEastAor,
   inUkraineAor,
+  looksMiddleEastRelated,
   looksUkraineRelated,
   threatCondition,
 } from "@/lib/theaters";
@@ -22,6 +24,21 @@ describe("inUkraineAor", () => {
   it("includes Kyiv and excludes Tehran", () => {
     expect(inUkraineAor(50.45, 30.52)).toBe(true);
     expect(inUkraineAor(35.7, 51.4)).toBe(false);
+  });
+});
+
+describe("inMiddleEastAor", () => {
+  it("includes Baghdad and Hormuz, excludes Kyiv", () => {
+    expect(inMiddleEastAor(33.3, 44.4)).toBe(true);
+    expect(inMiddleEastAor(26.5, 56.0)).toBe(true);
+    expect(inMiddleEastAor(50.45, 30.52)).toBe(false);
+  });
+});
+
+describe("looksMiddleEastRelated", () => {
+  it("matches Levant/Gulf language", () => {
+    expect(looksMiddleEastRelated("Houthi attack in the Red Sea")).toBe(true);
+    expect(looksUkraineRelated("Houthi attack in the Red Sea")).toBe(false);
   });
 });
 

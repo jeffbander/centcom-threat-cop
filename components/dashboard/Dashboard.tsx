@@ -23,7 +23,7 @@ import { EventDetailPanel } from "./EventDetailPanel";
 import { NewsTicker } from "./NewsTicker";
 import { MilitaryHud } from "./MilitaryHud";
 import { TheaterMissions } from "./TheaterMissions";
-import { UkraineWatch } from "./UkraineWatch";
+import { MiddleEastWatch, UkraineWatch } from "./UkraineWatch";
 import { ClassificationStrip } from "./ClassificationStrip";
 import { CopHotkeys } from "./CopHotkeys";
 import { CopShare } from "./CopShare";
@@ -196,6 +196,7 @@ function DashboardInner() {
         }
       />
       <UkraineWatch />
+      <MiddleEastWatch />
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
           <TheaterMissions />

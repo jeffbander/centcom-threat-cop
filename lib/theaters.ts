@@ -65,6 +65,28 @@ export function looksUkraineRelated(text: string): boolean {
   );
 }
 
+export const MIDDLE_EAST_AOR = {
+  minLat: 12,
+  maxLat: 38,
+  minLon: 32,
+  maxLon: 64,
+} as const;
+
+export function inMiddleEastAor(lat: number, lon: number): boolean {
+  return (
+    lat >= MIDDLE_EAST_AOR.minLat &&
+    lat <= MIDDLE_EAST_AOR.maxLat &&
+    lon >= MIDDLE_EAST_AOR.minLon &&
+    lon <= MIDDLE_EAST_AOR.maxLon
+  );
+}
+
+export function looksMiddleEastRelated(text: string): boolean {
+  return /iran|iraq|syria|yemen|gaza|israel|lebanon|hormuz|houthi|hezbollah|red sea|baghdad|tehran|damascus|beirut|sana.?a|west bank|palestine|idf|irgc/i.test(
+    text,
+  );
+}
+
 export function threatCondition(
   criticalCount: number,
   highCount: number,

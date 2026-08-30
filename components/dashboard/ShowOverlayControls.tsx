@@ -81,7 +81,7 @@ export function ShowOverlayControls({
     { key: "ais", label: "AIS vessels" },
     { key: "quakes", label: "USGS quakes" },
     { key: "launches", label: "Launches" },
-    { key: "acled", label: "ACLED UA" },
+    { key: "acled", label: "ACLED" },
     { key: "milHud", label: "Military HUD" },
     { key: "aois", label: "Theater AOIs" },
     { key: "newsWire", label: "OSINT wire" },

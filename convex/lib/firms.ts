@@ -7,7 +7,7 @@ import {
   resolveLayerSourceState,
   type LayerSourceState,
 } from "./layerState";
-import { inUkraineAor } from "./geo";
+import { inMiddleEastAor, inUkraineAor } from "./geo";
 
 export type FirmsDetection = {
   id: string;
@@ -23,7 +23,7 @@ export type FirmsDetection = {
 };
 
 export const FIRMS_MAX_DETECTIONS = 400;
-export const FIRMS_UKRAINE_RESERVE = 120;
+export const FIRMS_UKRAINE_RESERVE = 180;
 
 const HEADER_ALIASES: Record<string, string> = {
   latitude: "latitude",
@@ -179,7 +179,11 @@ export function parseFirmsCsv(
   const detections: FirmsDetection[] = [];
   const reserved: FirmsDetection[] = [];
   const consider = (det: FirmsDetection) => {
-    if (inUkraineAor(det.latitude, det.longitude) && reserveCap > 0) {
+    if (
+      reserveCap > 0 &&
+      (inUkraineAor(det.latitude, det.longitude) ||
+        inMiddleEastAor(det.latitude, det.longitude))
+    ) {
       pushCapped(reserved, det, reserveCap);
     }
     pushCapped(detections, det, cap);
