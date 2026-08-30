@@ -26,6 +26,7 @@ import {
 } from "@/lib/sgp4";
 import type { AnalystRecord } from "@/lib/analystQuery";
 import { AnalystQueryBox } from "./AnalystQueryBox";
+import { explainFirms } from "@/lib/firmsExplain";
 
 export function SituationBrief() {
   const brief = useQuery(api.briefing.situation);
@@ -348,30 +349,18 @@ export function SituationBrief() {
                         <button
                           type="button"
                           className="w-full text-left px-2 py-1.5 hover:bg-[var(--bg-hover)]"
-                          onClick={() =>
+                          onClick={() => {
+                            const view = explainFirms(
+                              d,
+                              nearbyFires,
+                              Date.now(),
+                              firmsSnap?.provenance ?? "NASA FIRMS",
+                            );
                             setSelectedContact({
-                              kind: "firms",
-                              id: d.id,
-                              latitude: d.latitude,
-                              longitude: d.longitude,
-                              title: `FIRMS ${d.satellite} ${d.instrument}`,
-                              subtitle: `${d.distanceKm.toFixed(1)} km from selected event · FRP ${d.frp.toFixed(1)} MW`,
-                              details: [
-                                {
-                                  label: "Distance",
-                                  value: `${d.distanceKm.toFixed(1)} km`,
-                                },
-                                { label: "FRP", value: `${d.frp.toFixed(1)} MW` },
-                                {
-                                  label: "Sensor",
-                                  value: `${d.satellite} ${d.instrument}`,
-                                },
-                              ],
-                              provenance:
-                                firmsSnap?.provenance ??
-                                "NASA FIRMS — contact, not an event",
-                            })
-                          }
+                              ...view,
+                              subtitle: `${d.distanceKm.toFixed(1)} km from selected event · ${view.subtitle}`,
+                            });
+                          }}
                         >
                           <span className="text-xs font-medium">
                             FRP {d.frp.toFixed(1)} MW

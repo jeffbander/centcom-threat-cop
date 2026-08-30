@@ -38,6 +38,7 @@ import type { LaunchContact } from "@/convex/lib/launches";
 import type { AcledContact } from "@/convex/lib/acled";
 import { acledTone } from "@/convex/lib/acled";
 import type { SelectedContact } from "./DashboardContext";
+import { explainFirms } from "@/lib/firmsExplain";
 import type { GroundTrack } from "@/lib/sgp4";
 import { destinationPoint } from "@/lib/spatialJoin";
 import {
@@ -761,6 +762,7 @@ function FirmsLayer({
         const selected = selectedId === d.id;
         const hot = highlightIds?.has(d.id) ?? false;
         const fill = d.frp >= 30 ? "#ef4444" : d.frp >= 10 ? "#f97316" : "#fbbf24";
+        const view = explainFirms(d, detections, Date.now(), provenance);
         return (
           <CircleMarker
             key={d.id}
@@ -773,37 +775,13 @@ function FirmsLayer({
               fillOpacity: 0.9,
             }}
             eventHandlers={{
-              click: () =>
-                onSelect({
-                  kind: "firms",
-                  id: d.id,
-                  latitude: d.latitude,
-                  longitude: d.longitude,
-                  title: `FIRMS ${d.satellite} ${d.instrument}`,
-                  subtitle: `FRP ${d.frp.toFixed(1)} MW · contact, not an event`,
-                  details: [
-                    { label: "FRP", value: `${d.frp.toFixed(1)} MW` },
-                    { label: "Sensor", value: `${d.satellite} ${d.instrument}` },
-                    {
-                      label: "Acquired",
-                      value: new Date(d.acquiredAt).toISOString().slice(0, 16) + "Z",
-                    },
-                    { label: "Confidence", value: d.confidence || "—" },
-                    {
-                      label: "Lat/Lon",
-                      value: `${d.latitude.toFixed(3)}, ${d.longitude.toFixed(3)}`,
-                    },
-                  ],
-                  provenance,
-                }),
+              click: () => onSelect(view),
             }}
           >
             <Tooltip direction="top" offset={[0, -4]}>
               <div className="text-xs">
-                <div className="font-semibold">FIRMS hotspot</div>
-                <div className="opacity-80">
-                  FRP {d.frp.toFixed(1)} MW · {d.satellite} {d.instrument}
-                </div>
+                <div className="font-semibold">{view.tooltip}</div>
+                <div className="opacity-80">NASA FIRMS heat pixel</div>
               </div>
             </Tooltip>
           </CircleMarker>

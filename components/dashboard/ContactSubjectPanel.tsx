@@ -128,7 +128,7 @@ export function ContactSubjectPanel() {
               requestMapFocus(
                 selectedContact.latitude,
                 selectedContact.longitude,
-                6,
+                selectedContact.kind === "firms" ? 8 : 6,
               )
             }
           >
@@ -143,6 +143,11 @@ export function ContactSubjectPanel() {
           </button>
         </div>
       </div>
+      {selectedContact.assessment && (
+        <p className="mt-2 text-[11px] leading-snug text-[var(--text)]">
+          {selectedContact.assessment}
+        </p>
+      )}
       <dl className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px]">
         {selectedContact.details.map((row) => (
           <div key={row.label} className="min-w-0">
@@ -153,7 +158,36 @@ export function ContactSubjectPanel() {
           </div>
         ))}
       </dl>
-      {nearby.events.length > 0 && (
+      {selectedContact.kind === "firms" ? (
+        <div className="mt-2">
+          <p className="text-[9px] font-mono uppercase tracking-wide text-[var(--text-faint)]">
+            Loaded news within 25 km — coincidence, not a FIRMS article
+          </p>
+          {nearby.events.filter((e) => e.distanceKm <= 25).length === 0 ? (
+            <p className="text-[11px] text-[var(--text-muted)]">
+              No loaded news within 25 km of this pixel. Sitrep headlines below
+              are not about this detection.
+            </p>
+          ) : (
+            <ul>
+              {nearby.events
+                .filter((e) => e.distanceKm <= 25)
+                .map((e) => (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      className="w-full text-left text-[11px] hover:bg-[var(--bg-hover)] py-0.5"
+                      onClick={() => setSelectedEventId(e.id)}
+                    >
+                      {e.distanceKm.toFixed(0)} km {e.bearing.toFixed(0)}° ·{" "}
+                      {e.headline}
+                    </button>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </div>
+      ) : nearby.events.length > 0 ? (
         <div className="mt-2">
           <p className="text-[9px] font-mono uppercase tracking-wide text-[var(--text-faint)]">
             Events within 50 km
@@ -173,7 +207,7 @@ export function ContactSubjectPanel() {
             ))}
           </ul>
         </div>
-      )}
+      ) : null}
       {nearby.fires.length > 0 && (
         <p className="mt-1 text-[10px] font-mono text-[#f97316]">
           FIRMS nearby: {nearby.fires.map((f) => `${f.distanceKm.toFixed(0)}km FRP ${f.frp.toFixed(0)}`).join(" · ")}

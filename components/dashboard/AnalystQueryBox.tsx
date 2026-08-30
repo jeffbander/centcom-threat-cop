@@ -10,6 +10,7 @@ import {
 } from "@/lib/analystQuery";
 import { FIRMS_NEAR_EVENT_KM } from "@/lib/spatialJoin";
 import { useDashboard } from "./DashboardContext";
+import { explainFirms } from "@/lib/firmsExplain";
 
 export function AnalystQueryBox({ records }: { records: AnalystRecord[] }) {
   const { selectedEventId, setSelectedEventId, setSelectedContact } =
@@ -121,21 +122,31 @@ export function AnalystQueryBox({ records }: { records: AnalystRecord[] }) {
               onClick={() => {
                 if (item.layerKey === "events") {
                   setSelectedEventId(item.id as never);
+                } else if (item.layerKey === "firms") {
+                  setSelectedContact(
+                    explainFirms({
+                      id: item.id,
+                      latitude: item.latitude,
+                      longitude: item.longitude,
+                      frp: Number(item.frp ?? 0),
+                      acquiredAt: Number(item.acquiredAt ?? Date.now()),
+                      satellite: String(item.satellite ?? "N"),
+                      instrument: String(item.instrument ?? "VIIRS"),
+                      confidence: String(item.confidence ?? ""),
+                      brightness: null,
+                      daynight:
+                        typeof item.daynight === "string" ? item.daynight : null,
+                    }),
+                  );
                 } else {
                   setSelectedContact({
-                    kind: item.layerKey === "firms" ? "firms" : "satellite",
+                    kind: "satellite",
                     id: item.id,
                     latitude: item.latitude,
                     longitude: item.longitude,
-                    title:
-                      item.headline ||
-                      item.name ||
-                      (item.layerKey === "firms" ? "FIRMS detection" : "Satellite"),
+                    title: item.headline || item.name || "Satellite",
                     subtitle: `${item.layerKey} · ${item.latitude.toFixed(2)}°, ${item.longitude.toFixed(2)}°`,
                     details: [
-                      ...(item.frp != null
-                        ? [{ label: "FRP", value: String(item.frp) }]
-                        : []),
                       ...(item.norad
                         ? [{ label: "NORAD", value: String(item.norad) }]
                         : []),

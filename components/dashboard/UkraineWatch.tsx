@@ -14,12 +14,12 @@ import type { FirmsDetection } from "@/convex/lib/firms";
 import { useDashboard } from "./DashboardContext";
 import { formatRelativeTime } from "@/lib/format";
 import { AorGuide } from "./AorGuide";
+import { explainFirms } from "@/lib/firmsExplain";
 
 export function UkraineWatch() {
   return (
     <AorWatch
       label="Ukraine AOR"
-      subtitle="Ukraine AOR · last 24h"
       aria="Ukraine AOR watch"
       toneClass="text-[var(--critical)]"
       focusLat={48.25}
@@ -35,7 +35,6 @@ export function MiddleEastWatch() {
   return (
     <AorWatch
       label="Middle East AOR"
-      subtitle="Levant / Gulf / Red Sea · last 24h"
       aria="Middle East AOR watch"
       toneClass="text-[var(--high)]"
       focusLat={27.5}
@@ -66,7 +65,6 @@ export function AorWatchRail() {
 
 function AorWatch({
   label,
-  subtitle,
   aria,
   toneClass,
   focusLat,
@@ -76,7 +74,6 @@ function AorWatch({
   related,
 }: {
   label: string;
-  subtitle: string;
   aria: string;
   toneClass: string;
   focusLat: number;
@@ -159,6 +156,7 @@ function AorWatch({
       last24: thermal.last24Count,
       delta: thermal.delta,
       hottest: thermal.hottest,
+      firmsAll: firms,
       air: air.length,
       sea: sea.length,
       acled: acled.length,
@@ -205,22 +203,14 @@ function AorWatch({
               type="button"
               className="hover:underline mr-2"
               onClick={() => {
-                setSelectedContact({
-                  kind: "firms",
-                  id: d.id,
-                  latitude: d.latitude,
-                  longitude: d.longitude,
-                  title: `FIRMS FRP ${d.frp.toFixed(1)} MW`,
-                  subtitle,
-                  details: [
-                    { label: "FRP", value: `${d.frp.toFixed(1)} MW` },
-                    {
-                      label: "Acquired",
-                      value: new Date(d.acquiredAt).toISOString().slice(0, 16) + "Z",
-                    },
-                  ],
-                  provenance: firmsSnap?.provenance ?? "NASA FIRMS",
-                });
+                setSelectedContact(
+                  explainFirms(
+                    d,
+                    stats.firmsAll,
+                    Date.now(),
+                    firmsSnap?.provenance ?? "NASA FIRMS",
+                  ),
+                );
                 requestMapFocus(d.latitude, d.longitude, 8);
               }}
             >

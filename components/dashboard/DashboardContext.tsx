@@ -20,6 +20,8 @@ export type SelectedContact = {
   subtitle: string;
   details: Array<{ label: string; value: string }>;
   provenance: string;
+  /** Per-contact narrative. FIRMS uses this instead of generic articles. */
+  assessment?: string;
 };
 
 export type FilterState = {
