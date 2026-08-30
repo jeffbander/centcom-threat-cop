@@ -23,7 +23,7 @@ import { EventDetailPanel } from "./EventDetailPanel";
 import { NewsTicker } from "./NewsTicker";
 import { MilitaryHud } from "./MilitaryHud";
 import { TheaterMissions } from "./TheaterMissions";
-import { MiddleEastWatch, UkraineWatch } from "./UkraineWatch";
+import { AorWatchRail } from "./UkraineWatch";
 import { ClassificationStrip } from "./ClassificationStrip";
 import { CopHotkeys } from "./CopHotkeys";
 import { CopShare } from "./CopShare";
@@ -195,8 +195,6 @@ function DashboardInner() {
             : undefined
         }
       />
-      <UkraineWatch />
-      <MiddleEastWatch />
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
           <TheaterMissions />
@@ -222,6 +220,7 @@ function DashboardInner() {
       {overlays.newsWire && <NewsTicker />}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
         <FilterRail />
+        <AorWatchRail />
         <div className="flex-1 flex flex-col lg:flex-row min-h-0 min-w-0">
           <EventMap
             showSatellites={overlays.satellites}

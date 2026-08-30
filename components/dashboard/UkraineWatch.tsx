@@ -46,6 +46,22 @@ export function MiddleEastWatch() {
   );
 }
 
+/** Left-rail dock so AOR boards do not sit on top of the map. */
+export function AorWatchRail() {
+  return (
+    <aside
+      className="hidden lg:flex w-[270px] xl:w-[300px] shrink-0 flex-col min-h-0 overflow-y-auto gsm-scroll border-r border-[var(--border)] bg-[#070b10]"
+      aria-label="Theater AOR watch"
+    >
+      <p className="px-2 py-1.5 border-b border-[var(--border)] text-[9px] uppercase tracking-[0.14em] font-mono text-[var(--text-faint)]">
+        AOR watch
+      </p>
+      <UkraineWatch />
+      <MiddleEastWatch />
+    </aside>
+  );
+}
+
 function AorWatch({
   label,
   subtitle,
@@ -150,31 +166,33 @@ function AorWatch({
 
   return (
     <section
-      className="px-2 py-1 border-b border-[var(--border)] bg-[#0a0c10] text-[10px] font-mono"
+      className="shrink-0 px-2 py-2 border-b border-[var(--border)] bg-[#0a0c10] text-[10px] font-mono"
       aria-label={aria}
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="flex flex-col gap-1">
         <button
           type="button"
-          className={`uppercase tracking-[0.14em] font-bold ${toneClass}`}
+          className={`text-left uppercase tracking-[0.14em] font-bold ${toneClass}`}
           onClick={() => requestMapFocus(focusLat, focusLon, focusZoom)}
         >
           {label}
         </button>
-        <span className="text-[var(--critical)]">CRIT {stats.crit}</span>
-        <span className="text-[var(--high)]">HIGH {stats.high}</span>
-        <span className="text-[#f97316]" title="FIRMS in AOR / last 24h vs prior 24h">
-          THERMAL {stats.fires} · 24h {stats.last24}
-          {stats.delta > 0 ? ` · +${stats.delta}` : stats.delta < 0 ? ` · ${stats.delta}` : ""}
-        </span>
-        <span className="text-[#ef4444]" title={stats.acledStatus}>
-          ACLED {stats.acledStatus === "KEY_REQUIRED" ? "KEY" : stats.acled}
-        </span>
-        <span className="text-[#fbbf24]">ADS-B {stats.air}</span>
-        <span className="text-[#22d3ee]">AIS {stats.sea}</span>
-        <span className="text-[var(--text-faint)]">
-          {stats.eventCount} events in AOR
-        </span>
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px]">
+          <span className="text-[var(--critical)]">CRIT {stats.crit}</span>
+          <span className="text-[var(--high)]">HIGH {stats.high}</span>
+          <span className="text-[#f97316]" title="FIRMS in AOR / last 24h vs prior 24h">
+            THERMAL {stats.fires} · 24h {stats.last24}
+            {stats.delta > 0 ? ` · +${stats.delta}` : stats.delta < 0 ? ` · ${stats.delta}` : ""}
+          </span>
+          <span className="text-[#ef4444]" title={stats.acledStatus}>
+            ACLED {stats.acledStatus === "KEY_REQUIRED" ? "KEY" : stats.acled}
+          </span>
+          <span className="text-[#fbbf24]">ADS-B {stats.air}</span>
+          <span className="text-[#22d3ee]">AIS {stats.sea}</span>
+          <span className="text-[var(--text-faint)]">
+            {stats.eventCount} events
+          </span>
+        </div>
       </div>
       {stats.hottest.length > 0 && (
         <p className="mt-0.5 text-[10px] text-[#f97316] truncate">
