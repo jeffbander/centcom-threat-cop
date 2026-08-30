@@ -32,7 +32,7 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${dmMono.variable} antialiased bg-[var(--bg)] text-[var(--text)]`}
       >
-        <ClerkProvider dynamic>
+        <ClerkProvider dynamic waitlistUrl="/waitlist">
           <ConvexClientProvider>{children}</ConvexClientProvider>
         </ClerkProvider>
       </body>

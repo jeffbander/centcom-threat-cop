@@ -1,6 +1,7 @@
 "use client";
 
-import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import Link from "next/link";
+import { SignInButton } from "@clerk/nextjs";
 import { CentcomSeal } from "./CentcomSeal";
 
 /**
@@ -41,17 +42,15 @@ export function Landing() {
               Sign in
             </button>
           </SignInButton>
-          <SignUpButton mode="modal">
-            <button
-              type="button"
-              className="w-full py-2.5 px-6 text-xs font-mono uppercase tracking-[0.12em]
-                border border-[#3d4a58] text-[#c5cdd6] hover:bg-[#0e1822]
-                focus-visible:outline focus-visible:outline-2
-                focus-visible:outline-offset-2 focus-visible:outline-[#c9a227]"
-            >
-              Request access
-            </button>
-          </SignUpButton>
+          <Link
+            href="/waitlist"
+            className="block w-full py-2.5 px-6 text-center text-xs font-mono uppercase tracking-[0.12em]
+              border border-[#3d4a58] text-[#c5cdd6] hover:bg-[#0e1822]
+              focus-visible:outline focus-visible:outline-2
+              focus-visible:outline-offset-2 focus-visible:outline-[#c9a227]"
+          >
+            Request access
+          </Link>
         </div>
       </main>
 
