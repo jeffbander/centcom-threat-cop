@@ -49,6 +49,16 @@ export type DashboardContextValue = {
   setDetailOpen: (open: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (open: boolean) => void;
+  contactTrack: {
+    contactId: string;
+    points: Array<{ t: number; latitude: number; longitude: number }>;
+  } | null;
+  setContactTrack: (
+    track: {
+      contactId: string;
+      points: Array<{ t: number; latitude: number; longitude: number }>;
+    } | null,
+  ) => void;
 };
 
 const DEFAULT_FILTERS: FilterState = {
@@ -83,6 +93,10 @@ export function DashboardProvider({
   );
   const [detailOpen, setDetailOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [contactTrack, setContactTrack] = useState<{
+    contactId: string;
+    points: Array<{ t: number; latitude: number; longitude: number }>;
+  } | null>(null);
   const [mapFocus, setMapFocus] = useState<{
     latitude: number;
     longitude: number;
@@ -115,6 +129,8 @@ export function DashboardProvider({
         if (contact) {
           setSelectedEventId(null);
           setDetailOpen(false);
+        } else {
+          setContactTrack(null);
         }
       },
       mapFocus,
@@ -127,6 +143,8 @@ export function DashboardProvider({
       setDetailOpen,
       settingsOpen,
       setSettingsOpen,
+      contactTrack,
+      setContactTrack,
     }),
     [
       filters,
@@ -138,6 +156,7 @@ export function DashboardProvider({
       preferredView,
       detailOpen,
       settingsOpen,
+      contactTrack,
     ],
   );
 

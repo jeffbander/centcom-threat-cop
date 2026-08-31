@@ -76,6 +76,7 @@ export function EventMap({
     setSelectedContact,
     preferredView,
     mapFocus,
+    contactTrack,
   } = useDashboard();
   const events = useQuery(api.events.list, {
     categories: filters.categories,
@@ -468,6 +469,7 @@ export function EventMap({
               onSelectContact={setSelectedContact}
               mapFocus={mapFocus}
               cursorReadout={cursorReadout}
+              contactTrack={contactTrack}
               firmsProvenance={
                 firmsSnap?.provenance ??
                 "NASA FIRMS VIIRS 24h"

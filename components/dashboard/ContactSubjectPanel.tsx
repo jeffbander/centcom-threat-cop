@@ -7,6 +7,7 @@ import type { FirmsDetection } from "@/convex/lib/firms";
 import type { AdsbContact } from "@/convex/lib/adsb";
 import { FIRMS_NEAR_EVENT_KM, bearingDeg, haversineKm } from "@/lib/spatialJoin";
 import { useDashboard } from "./DashboardContext";
+import { ContactInspector } from "./ContactInspector";
 
 export function ContactSubjectPanel() {
   const {
@@ -221,6 +222,7 @@ export function ContactSubjectPanel() {
       <p className="mt-1.5 text-[10px] leading-snug text-[var(--text-faint)]">
         {selectedContact.provenance}
       </p>
+      <ContactInspector />
     </section>
   );
 }

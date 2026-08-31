@@ -852,6 +852,7 @@ function LeafletMapCanvas({
   acledProvenance = "ACLED Ukraine",
   mapFocus = null,
   cursorReadout,
+  contactTrack = null,
 }: {
   events: MapEvent[];
   selectedEventId: Id<"events"> | null;
@@ -884,6 +885,10 @@ function LeafletMapCanvas({
   acledProvenance?: string;
   mapFocus?: { latitude: number; longitude: number; zoom: number; nonce: number } | null;
   cursorReadout?: RefObject<HTMLDivElement | null>;
+  contactTrack?: {
+    contactId: string;
+    points: Array<{ t: number; latitude: number; longitude: number }>;
+  } | null;
 }) {
   const validEvents = useMemo(
     () =>
@@ -926,6 +931,16 @@ function LeafletMapCanvas({
         mapFocus={mapFocus}
       />
       {cursorReadout ? <CursorHud readout={cursorReadout} /> : null}
+      {contactTrack && contactTrack.points.length > 1 ? (
+        <Polyline
+          positions={contactTrack.points.map((p) => [p.latitude, p.longitude])}
+          pathOptions={{
+            color: "#38bdf8",
+            weight: 2.5,
+            opacity: 0.85,
+          }}
+        />
+      ) : null}
       <ScaleControl position="bottomleft" imperial={false} maxWidth={120} />
 
       {/* Theater AOIs */}

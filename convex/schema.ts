@@ -214,4 +214,15 @@ export default defineSchema({
     errorSummary: v.optional(v.string()),
     provenance: v.string(),
   }).index("by_layer_and_fetchedAt", ["layer", "fetchedAt"]),
+
+  /**
+   * Sparse 24h tracks from our ADS-B/AIS snapshots (plus live OpenSky merge).
+   * One row per contact. Not a targeting history.
+   */
+  contactTracks: defineTable({
+    contactId: v.string(),
+    kind: v.union(v.literal("adsb"), v.literal("ais"), v.literal("firms")),
+    pointsJson: v.string(),
+    updatedAt: v.number(),
+  }).index("by_contactId", ["contactId"]),
 });

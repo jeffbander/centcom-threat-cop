@@ -482,6 +482,17 @@ async function refreshAis(ctx: ActionCtx) {
       provenance,
       errorSummary: errors.length ? errors.join("; ").slice(0, 400) : undefined,
     });
+    if (contacts.length > 0) {
+      await ctx.runMutation(internal.tracks.appendBatch, {
+        kind: "ais",
+        now,
+        samples: contacts.slice(0, 60).map((c) => ({
+          contactId: c.id,
+          latitude: c.latitude,
+          longitude: c.longitude,
+        })),
+      });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
     await writeLayer(ctx, {
@@ -664,6 +675,17 @@ async function refreshAdsb(ctx: ActionCtx) {
       recordsReceived: contacts.length,
       provenance,
     });
+    if (contacts.length > 0) {
+      await ctx.runMutation(internal.tracks.appendBatch, {
+        kind: "adsb",
+        now,
+        samples: contacts.slice(0, 80).map((c) => ({
+          contactId: c.id,
+          latitude: c.latitude,
+          longitude: c.longitude,
+        })),
+      });
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message.slice(0, 400) : "fetch failed";
     await ctx.runMutation(internal.layers.replaceSnapshot, {
